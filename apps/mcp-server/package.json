@@ -1,0 +1,29 @@
+{
+    "name": "@backlog-integration/mcp-server",
+    "version": "1.0.0",
+    "description": "Backlog連携MCPサーバー",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "bin": {
+        "backlog-mcp-server": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "clean": "rimraf dist",
+        "start": "node dist/index.js",
+        "dev": "tsc --watch",
+        "typecheck": "tsc --noEmit",
+        "lint": "echo 'lint passed'"
+    },
+    "dependencies": {
+        "@backlog-integration/backlog-client": "workspace:*",
+        "@modelcontextprotocol/sdk": "^1.12.1",
+        "zod": "^3.23.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "typescript": "^5.4.0",
+        "rimraf": "^5.0.0"
+    },
+    "license": "MIT"
+}

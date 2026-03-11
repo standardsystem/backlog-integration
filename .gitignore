@@ -1,0 +1,25 @@
+# Standard Node.js/pnpm ignore patterns
+node_modules/
+dist/
+lib/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE / System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+out/
+build/
+.next/
+.turbo/
