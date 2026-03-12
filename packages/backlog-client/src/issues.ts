@@ -1,3 +1,7 @@
+import { createWriteStream } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import type { BacklogApiClient } from './client.js';
 import type {
     ListIssuesOptions,
@@ -57,22 +61,30 @@ export class IssueService {
         const params: Record<string, unknown> = {};
 
         if (options.projectIdOrKey !== undefined) {
-            params['projectId[]'] = [options.projectIdOrKey];
+            let projectId: number;
+            if (typeof options.projectIdOrKey === 'number') {
+                projectId = options.projectIdOrKey;
+            } else {
+                // プロジェクトキー（文字列）を数値IDに変換
+                const project = await backlog.getProject(options.projectIdOrKey);
+                projectId = (project as { id: number }).id;
+            }
+            params.projectId = [projectId];
         }
         if (options.statusId) {
-            params['statusId[]'] = options.statusId;
+            params.statusId = options.statusId;
         }
         if (options.assigneeId) {
-            params['assigneeId[]'] = options.assigneeId;
+            params.assigneeId = options.assigneeId;
         }
         if (options.createdUserId) {
-            params['createdUserId[]'] = options.createdUserId;
+            params.createdUserId = options.createdUserId;
         }
         if (options.issueTypeId) {
-            params['issueTypeId[]'] = options.issueTypeId;
+            params.issueTypeId = options.issueTypeId;
         }
         if (options.categoryId) {
-            params['categoryId[]'] = options.categoryId;
+            params.categoryId = options.categoryId;
         }
         if (options.keyword) {
             params.keyword = options.keyword;
@@ -136,6 +148,9 @@ export class IssueService {
         if (options.statusId !== undefined) {
             params.statusId = options.statusId;
         }
+        if (options.dueDate !== undefined) {
+            params.dueDate = options.dueDate;
+        }
 
         return await backlog.patchIssue(issueIdOrKey, params);
     }
@@ -166,5 +181,30 @@ export class IssueService {
             assigneeId: reporterId,
             comment: comment ?? `担当者をレポーターに変更しました。`,
         });
+    }
+
+    /**
+     * 課題の添付ファイルをダウンロードしてローカルに保存する
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param attachmentId - 添付ファイルID
+     * @param outputPath - 保存先の絶対パス
+     */
+    async downloadAttachment(
+        issueIdOrKey: string | number,
+        attachmentId: number,
+        outputPath: string,
+    ): Promise<void> {
+        const backlog = this.client.getClient();
+        const fileData = await backlog.getIssueAttachment(issueIdOrKey, attachmentId);
+
+        // Node.js 環境: body は PassThrough ストリーム
+        const data = fileData as { body: NodeJS.ReadableStream; filename: string };
+
+        // 出力先ディレクトリが存在しない場合は作成
+        await mkdir(dirname(outputPath), { recursive: true });
+
+        const writeStream = createWriteStream(outputPath);
+        await pipeline(data.body, writeStream);
     }
 }

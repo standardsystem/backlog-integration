@@ -60,4 +60,6 @@ export interface UpdateIssueOptions {
     comment?: string;
     /** 状態ID */
     statusId?: number;
+    /** 期限日（YYYY-MM-DD形式） */
+    dueDate?: string;
 }

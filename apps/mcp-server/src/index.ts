@@ -21,6 +21,8 @@ import { registerGetIssueTool } from './tools/get-issue.js';
 import { registerListIssuesTool } from './tools/list-issues.js';
 import { registerAddCommentTool } from './tools/add-comment.js';
 import { registerAssignToReporterTool } from './tools/assign-to-reporter.js';
+import { registerUpdateIssueTool } from './tools/update-issue.js';
+import { registerDownloadAttachmentTool } from './tools/download-attachment.js';
 
 async function main() {
     // 環境変数の検証
@@ -50,6 +52,8 @@ async function main() {
     registerListIssuesTool(server, issueService);
     registerAddCommentTool(server, issueService);
     registerAssignToReporterTool(server, issueService);
+    registerUpdateIssueTool(server, issueService);
+    registerDownloadAttachmentTool(server, issueService);
 
     // Stdioトランスポートで起動
     const transport = new StdioServerTransport();

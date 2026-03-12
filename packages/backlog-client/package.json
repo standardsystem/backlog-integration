@@ -14,8 +14,9 @@
         "backlog-js": "^0.16.0"
     },
     "devDependencies": {
-        "typescript": "^5.4.0",
-        "rimraf": "^5.0.0"
+        "@types/node": "^20.19.37",
+        "rimraf": "^5.0.0",
+        "typescript": "^5.4.0"
     },
     "files": [
         "dist"
