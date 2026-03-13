@@ -7,6 +7,7 @@ import type {
     ListIssuesOptions,
     AddCommentOptions,
     UpdateIssueOptions,
+    ListCommentsOptions,
 } from './types.js';
 
 /**
@@ -181,6 +182,40 @@ export class IssueService {
             assigneeId: reporterId,
             comment: comment ?? `担当者をレポーターに変更しました。`,
         });
+    }
+
+    /**
+     * 課題の特定コメントを取得する
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー（例: "PROJECT-123"）
+     * @param commentId - コメントID
+     * @returns コメントの詳細情報
+     */
+    async getComment(issueIdOrKey: string | number, commentId: number) {
+        const backlog = this.client.getClient();
+        return await backlog.getIssueComment(issueIdOrKey, commentId);
+    }
+
+    /**
+     * 課題のコメント一覧を取得する
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー（例: "PROJECT-123"）
+     * @param options - 取得条件（minId, maxId, count, order）
+     * @returns コメントの配列
+     */
+    async listComments(
+        issueIdOrKey: string | number,
+        options: ListCommentsOptions = {},
+    ) {
+        const backlog = this.client.getClient();
+        const params: Record<string, unknown> = {};
+
+        if (options.minId !== undefined) params.minId = options.minId;
+        if (options.maxId !== undefined) params.maxId = options.maxId;
+        if (options.count !== undefined) params.count = options.count;
+        if (options.order !== undefined) params.order = options.order;
+
+        return await backlog.getIssueComments(issueIdOrKey, params);
     }
 
     /**

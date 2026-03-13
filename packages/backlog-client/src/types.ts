@@ -63,3 +63,17 @@ export interface UpdateIssueOptions {
     /** 期限日（YYYY-MM-DD形式） */
     dueDate?: string;
 }
+
+/**
+ * コメント一覧取得のオプション
+ */
+export interface ListCommentsOptions {
+    /** 最小コメントID */
+    minId?: number;
+    /** 最大コメントID */
+    maxId?: number;
+    /** 取得件数（デフォルト: 20, 最大: 100） */
+    count?: number;
+    /** ソート順 */
+    order?: 'asc' | 'desc';
+}

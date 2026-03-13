@@ -25,4 +25,5 @@ export type {
     ListIssuesOptions,
     AddCommentOptions,
     UpdateIssueOptions,
+    ListCommentsOptions,
 } from './types.js';
