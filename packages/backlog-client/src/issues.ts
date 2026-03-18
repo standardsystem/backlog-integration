@@ -8,6 +8,7 @@ import type {
     AddCommentOptions,
     UpdateIssueOptions,
     ListCommentsOptions,
+    CreateIssueOptions,
 } from './types.js';
 
 /**
@@ -241,5 +242,35 @@ export class IssueService {
 
         const writeStream = createWriteStream(outputPath);
         await pipeline(data.body, writeStream);
+    }
+
+    /**
+     * 課題を新規作成する
+     *
+     * @param options - 課題作成パラメータ（projectId, summary, issueTypeId, priorityId は必須）
+     * @returns 作成された課題
+     */
+    async createIssue(options: CreateIssueOptions) {
+        const backlog = this.client.getClient();
+        const params: Record<string, unknown> = {
+            projectId: options.projectId,
+            summary: options.summary,
+            issueTypeId: options.issueTypeId,
+            priorityId: options.priorityId,
+        };
+
+        if (options.description !== undefined) params.description = options.description;
+        if (options.startDate !== undefined) params.startDate = options.startDate;
+        if (options.dueDate !== undefined) params.dueDate = options.dueDate;
+        if (options.estimatedHours !== undefined) params.estimatedHours = options.estimatedHours;
+        if (options.actualHours !== undefined) params.actualHours = options.actualHours;
+        if (options.assigneeId !== undefined) params.assigneeId = options.assigneeId;
+        if (options.categoryId !== undefined) params.categoryId = options.categoryId;
+        if (options.versionId !== undefined) params.versionId = options.versionId;
+        if (options.milestoneId !== undefined) params.milestoneId = options.milestoneId;
+        if (options.notifiedUserId !== undefined) params.notifiedUserId = options.notifiedUserId;
+        if (options.parentIssueId !== undefined) params.parentIssueId = options.parentIssueId;
+
+        return await backlog.postIssue(params as any);
     }
 }

@@ -77,3 +77,39 @@ export interface ListCommentsOptions {
     /** ソート順 */
     order?: 'asc' | 'desc';
 }
+
+/**
+ * 課題作成のオプション
+ */
+export interface CreateIssueOptions {
+    /** プロジェクトID */
+    projectId: number;
+    /** 件名 */
+    summary: string;
+    /** 課題タイプID */
+    issueTypeId: number;
+    /** 優先度ID (2:高, 3:中, 4:低) */
+    priorityId: number;
+    /** 詳細 */
+    description?: string;
+    /** 開始日（YYYY-MM-DD形式） */
+    startDate?: string;
+    /** 期限日（YYYY-MM-DD形式） */
+    dueDate?: string;
+    /** 予定時間 */
+    estimatedHours?: number;
+    /** 実績時間 */
+    actualHours?: number;
+    /** 担当者ID */
+    assigneeId?: number;
+    /** カテゴリID */
+    categoryId?: number[];
+    /** 発生バージョンID */
+    versionId?: number[];
+    /** マイルストーンID */
+    milestoneId?: number[];
+    /** 通知先ユーザーID */
+    notifiedUserId?: number[];
+    /** 親課題ID */
+    parentIssueId?: number;
+}
