@@ -38,9 +38,28 @@ export function registerCreateIssueTool(server: McpServer, issueService: IssueSe
                 .describe('通知先ユーザーIDの配列'),
             parentIssueId: z.number().optional()
                 .describe('親課題ID'),
+            attachmentId: z.array(z.number()).optional()
+                .describe('添付ファイルIDの配列'),
+            uploadFilePaths: z.array(z.string()).optional()
+                .describe('ローカルファイルの絶対パスの配列（同時にアップロードして添付します）'),
         },
         async (params) => {
             try {
+                const combinedAttachmentIds: number[] = [...(params.attachmentId || [])];
+                
+                if (params.uploadFilePaths && params.uploadFilePaths.length > 0) {
+                    for (const filePath of params.uploadFilePaths) {
+                        try {
+                            const fileInfo = await issueService.uploadAttachment(filePath);
+                            if (fileInfo && typeof fileInfo === 'object' && 'id' in fileInfo) {
+                                combinedAttachmentIds.push(fileInfo.id as number);
+                            }
+                        } catch (uploadError) {
+                            throw new Error(`ファイル '${filePath}' のアップロードに失敗しました: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`);
+                        }
+                    }
+                }
+
                 const createdIssue = await issueService.createIssue({
                     projectId: params.projectId,
                     summary: params.summary,
@@ -57,6 +76,7 @@ export function registerCreateIssueTool(server: McpServer, issueService: IssueSe
                     milestoneId: params.milestoneId ?? undefined,
                     notifiedUserId: params.notifiedUserId ?? undefined,
                     parentIssueId: params.parentIssueId ?? undefined,
+                    attachmentId: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : undefined,
                 });
 
                 const issue = createdIssue as {

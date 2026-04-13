@@ -48,20 +48,50 @@ export interface AddCommentOptions {
     content: string;
     /** 通知先ユーザーID */
     notifiedUserId?: number[];
+    /** 添付ファイルIDの配列 */
+    attachmentId?: number[];
 }
 
 /**
  * 課題更新のオプション
  */
 export interface UpdateIssueOptions {
-    /** 担当者ID */
-    assigneeId?: number;
-    /** コメント */
-    comment?: string;
+    /** 件名 */
+    summary?: string;
+    /** 親課題ID */
+    parentIssueId?: number | null;
+    /** 詳細 */
+    description?: string;
     /** 状態ID */
     statusId?: number;
+    /** 担当者ID */
+    assigneeId?: number | null;
+    /** 課題タイプID */
+    issueTypeId?: number;
+    /** カテゴリID */
+    categoryId?: number[];
+    /** 発生バージョンID */
+    versionId?: number[];
+    /** マイルストーンID */
+    milestoneId?: number[];
+    /** 優先度ID */
+    priorityId?: number;
+    /** 開始日（YYYY-MM-DD形式） */
+    startDate?: string;
     /** 期限日（YYYY-MM-DD形式） */
     dueDate?: string;
+    /** 予定時間 */
+    estimatedHours?: number;
+    /** 実績時間 */
+    actualHours?: number;
+    /** 完了理由ID */
+    resolutionId?: number;
+    /** コメント */
+    comment?: string;
+    /** 通知先ユーザーID */
+    notifiedUserId?: number[];
+    /** 添付ファイルIDの配列 */
+    attachmentId?: number[];
 }
 
 /**
@@ -112,4 +142,6 @@ export interface CreateIssueOptions {
     notifiedUserId?: number[];
     /** 親課題ID */
     parentIssueId?: number;
+    /** 添付ファイルIDの配列 */
+    attachmentId?: number[];
 }

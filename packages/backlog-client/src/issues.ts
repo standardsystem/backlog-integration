@@ -1,6 +1,6 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, readFile } from 'node:fs/promises';
+import { dirname, basename } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { BacklogApiClient } from './client.js';
 import type {
@@ -119,12 +119,16 @@ export class IssueService {
         const params: {
             content: string;
             notifiedUserId?: number[];
+            attachmentId?: number[];
         } = {
             content: options.content,
         };
 
         if (options.notifiedUserId) {
             params.notifiedUserId = options.notifiedUserId;
+        }
+        if (options.attachmentId) {
+            params.attachmentId = options.attachmentId;
         }
 
         return await backlog.postIssueComments(issueIdOrKey, params);
@@ -141,18 +145,25 @@ export class IssueService {
         const backlog = this.client.getClient();
         const params: Record<string, unknown> = {};
 
-        if (options.assigneeId !== undefined) {
-            params.assigneeId = options.assigneeId;
-        }
-        if (options.comment) {
-            params.comment = options.comment;
-        }
-        if (options.statusId !== undefined) {
-            params.statusId = options.statusId;
-        }
-        if (options.dueDate !== undefined) {
-            params.dueDate = options.dueDate;
-        }
+        if (options.summary !== undefined) params.summary = options.summary;
+        if (options.parentIssueId !== undefined) params.parentIssueId = options.parentIssueId === null ? '' : options.parentIssueId;
+        if (options.description !== undefined) params.description = options.description;
+        if (options.statusId !== undefined) params.statusId = options.statusId;
+        // 担当者を未割り当てにする場合は空文字を設定する
+        if (options.assigneeId !== undefined) params.assigneeId = options.assigneeId === null ? '' : options.assigneeId;
+        if (options.issueTypeId !== undefined) params.issueTypeId = options.issueTypeId;
+        if (options.categoryId !== undefined) params.categoryId = options.categoryId;
+        if (options.versionId !== undefined) params.versionId = options.versionId;
+        if (options.milestoneId !== undefined) params.milestoneId = options.milestoneId;
+        if (options.priorityId !== undefined) params.priorityId = options.priorityId;
+        if (options.startDate !== undefined) params.startDate = options.startDate;
+        if (options.dueDate !== undefined) params.dueDate = options.dueDate;
+        if (options.estimatedHours !== undefined) params.estimatedHours = options.estimatedHours;
+        if (options.actualHours !== undefined) params.actualHours = options.actualHours;
+        if (options.resolutionId !== undefined) params.resolutionId = options.resolutionId;
+        if (options.notifiedUserId !== undefined) params.notifiedUserId = options.notifiedUserId;
+        if (options.attachmentId !== undefined) params.attachmentId = options.attachmentId;
+        if (options.comment !== undefined) params.comment = options.comment;
 
         return await backlog.patchIssue(issueIdOrKey, params);
     }
@@ -245,6 +256,27 @@ export class IssueService {
     }
 
     /**
+     * ローカルファイルをスペースの添付ファイルとしてアップロードする
+     *
+     * @param filePath - アップロードするファイルの絶対パス
+     * @param fileName - (任意) アップロード時のファイル名
+     * @returns 添付ファイル情報
+     */
+    async uploadAttachment(filePath: string, fileName?: string) {
+        const backlog = this.client.getClient();
+        
+        const fileBuffer = await readFile(filePath);
+        const name = fileName || basename(filePath);
+        
+        // Node.jsのグローバルなBlobとFormDataを使用
+        const blob = new Blob([fileBuffer]);
+        const formData = new FormData();
+        formData.append('file', blob, name);
+
+        return await backlog.postSpaceAttachment(formData as any);
+    }
+
+    /**
      * 課題を新規作成する
      *
      * @param options - 課題作成パラメータ（projectId, summary, issueTypeId, priorityId は必須）
@@ -270,6 +302,7 @@ export class IssueService {
         if (options.milestoneId !== undefined) params.milestoneId = options.milestoneId;
         if (options.notifiedUserId !== undefined) params.notifiedUserId = options.notifiedUserId;
         if (options.parentIssueId !== undefined) params.parentIssueId = options.parentIssueId;
+        if (options.attachmentId !== undefined) params.attachmentId = options.attachmentId;
 
         return await backlog.postIssue(params as any);
     }
