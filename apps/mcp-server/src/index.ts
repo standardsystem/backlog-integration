@@ -34,6 +34,8 @@ import { registerAddDocumentTool } from './tools/add-document.js';
 import { registerDownloadDocumentAttachmentTool } from './tools/download-document-attachment.js';
 import { registerDownloadDocumentMarkdownTool } from './tools/download-document-markdown.js';
 import { registerUploadDocumentMarkdownTool } from './tools/upload-document-markdown.js';
+import { registerDeleteIssueAttachmentTool } from './tools/delete-issue-attachment.js';
+import { registerDeleteDocumentAttachmentTool } from './tools/delete-document-attachment.js';
 
 async function main() {
     // 環境変数の検証
@@ -70,6 +72,7 @@ async function main() {
     registerListCommentsTool(server, issueService);
     registerCreateIssueTool(server, issueService);
     registerUploadAttachmentTool(server, issueService);
+    registerDeleteIssueAttachmentTool(server, issueService);
 
     // ツールの登録（ドキュメント）
     registerGetDocumentTool(server, documentService);
@@ -79,6 +82,7 @@ async function main() {
     registerDownloadDocumentAttachmentTool(server, documentService);
     registerDownloadDocumentMarkdownTool(server, documentService);
     registerUploadDocumentMarkdownTool(server, documentService);
+    registerDeleteDocumentAttachmentTool(server, documentService);
 
     // Stdioトランスポートで起動
     const transport = new StdioServerTransport();

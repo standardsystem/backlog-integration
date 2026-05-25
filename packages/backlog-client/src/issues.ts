@@ -277,6 +277,18 @@ export class IssueService {
     }
 
     /**
+     * 課題の添付ファイルを削除する
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param attachmentId - 添付ファイルID
+     * @returns 削除された添付ファイル情報
+     */
+    async deleteAttachment(issueIdOrKey: string | number, attachmentId: number) {
+        const backlog = this.client.getClient();
+        return await backlog.deleteIssueAttachment(issueIdOrKey, String(attachmentId));
+    }
+
+    /**
      * 課題を新規作成する
      *
      * @param options - 課題作成パラメータ（projectId, summary, issueTypeId, priorityId は必須）

@@ -98,6 +98,21 @@ export class DocumentService {
     }
 
     /**
+     * ドキュメントの添付ファイルを削除する
+     *
+     * backlog-js には deleteDocumentAttachment が未実装のため、
+     * 低レベルの delete メソッドを直接呼び出します。
+     *
+     * @param documentId - ドキュメントID
+     * @param attachmentId - 添付ファイルID
+     * @returns 削除された添付ファイル情報
+     */
+    async deleteAttachment(documentId: string, attachmentId: number) {
+        const backlog = this.client.getClient() as any;
+        return await backlog.delete(`documents/${documentId}/attachments/${attachmentId}`);
+    }
+
+    /**
      * ドキュメントの添付ファイルをダウンロードしてローカルに保存する
      *
      * @param documentId - ドキュメントID
