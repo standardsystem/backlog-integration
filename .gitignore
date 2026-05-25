@@ -23,3 +23,6 @@ out/
 build/
 .next/
 .turbo/
+
+# Claude settings
+.claude/

@@ -109,6 +109,60 @@ export interface ListCommentsOptions {
 }
 
 /**
+ * ドキュメント一覧取得のオプション
+ */
+export interface ListDocumentsOptions {
+    /** プロジェクトIDの配列（指定すると該当プロジェクトに絞り込み） */
+    projectId?: number[];
+    /** 検索キーワード */
+    keyword?: string;
+    /** ソートキー */
+    sort?: 'created' | 'updated';
+    /** ソート順 */
+    order?: 'asc' | 'desc';
+    /** オフセット（必須: 既定 0） */
+    offset?: number;
+    /** 取得件数（既定 20、最大 100） */
+    count?: number;
+}
+
+/**
+ * ドキュメント作成のオプション
+ */
+export interface AddDocumentOptions {
+    /** プロジェクトID */
+    projectId: number;
+    /** ドキュメントタイトル */
+    title?: string;
+    /** ドキュメント本文（Markdown / プレーンテキスト） */
+    content?: string;
+    /** 絵文字（任意） */
+    emoji?: string;
+    /** 親ドキュメントID（ツリー階層の親） */
+    parentId?: string;
+    /** true のとき末尾に追加（既定: 先頭側に追加される実装に依存） */
+    addLast?: boolean;
+}
+
+/**
+ * Markdown ファイルからドキュメントを作成する際のオプション
+ *
+ * AddDocumentOptions から content を除いたもの。本文はファイルから読み込まれます。
+ */
+export interface UploadDocumentMarkdownOptions {
+    /** プロジェクトID */
+    projectId: number;
+    /** ドキュメントタイトル（省略時はファイル名から拡張子を除いたもの） */
+    title?: string;
+    /** 絵文字（任意） */
+    emoji?: string;
+    /** 親ドキュメントID */
+    parentId?: string;
+    /** 末尾追加フラグ */
+    addLast?: boolean;
+}
+
+/**
  * 課題作成のオプション
  */
 export interface CreateIssueOptions {

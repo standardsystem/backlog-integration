@@ -20,6 +20,7 @@
 
 export { BacklogApiClient } from './client.js';
 export { IssueService } from './issues.js';
+export { DocumentService } from './documents.js';
 export type {
     BacklogClientConfig,
     ListIssuesOptions,
@@ -27,4 +28,7 @@ export type {
     UpdateIssueOptions,
     ListCommentsOptions,
     CreateIssueOptions,
+    ListDocumentsOptions,
+    AddDocumentOptions,
+    UploadDocumentMarkdownOptions,
 } from './types.js';

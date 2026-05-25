@@ -15,7 +15,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { BacklogApiClient, IssueService } from '@backlog-integration/backlog-client';
+import { BacklogApiClient, IssueService, DocumentService } from '@backlog-integration/backlog-client';
 
 import { registerGetIssueTool } from './tools/get-issue.js';
 import { registerListIssuesTool } from './tools/list-issues.js';
@@ -27,6 +27,13 @@ import { registerGetCommentTool } from './tools/get-comment.js';
 import { registerListCommentsTool } from './tools/list-comments.js';
 import { registerCreateIssueTool } from './tools/create-issue.js';
 import { registerUploadAttachmentTool } from './tools/upload-attachment.js';
+import { registerGetDocumentTool } from './tools/get-document.js';
+import { registerListDocumentsTool } from './tools/list-documents.js';
+import { registerGetDocumentTreeTool } from './tools/get-document-tree.js';
+import { registerAddDocumentTool } from './tools/add-document.js';
+import { registerDownloadDocumentAttachmentTool } from './tools/download-document-attachment.js';
+import { registerDownloadDocumentMarkdownTool } from './tools/download-document-markdown.js';
+import { registerUploadDocumentMarkdownTool } from './tools/upload-document-markdown.js';
 
 async function main() {
     // 環境変数の検証
@@ -44,6 +51,7 @@ async function main() {
     // Backlog クライアントの初期化
     const apiClient = new BacklogApiClient({ spaceId, apiKey });
     const issueService = new IssueService(apiClient);
+    const documentService = new DocumentService(apiClient);
 
     // MCPサーバーの作成
     const server = new McpServer({
@@ -51,7 +59,7 @@ async function main() {
         version: '1.0.0',
     });
 
-    // ツールの登録
+    // ツールの登録（課題）
     registerGetIssueTool(server, issueService);
     registerListIssuesTool(server, issueService);
     registerAddCommentTool(server, issueService);
@@ -62,6 +70,15 @@ async function main() {
     registerListCommentsTool(server, issueService);
     registerCreateIssueTool(server, issueService);
     registerUploadAttachmentTool(server, issueService);
+
+    // ツールの登録（ドキュメント）
+    registerGetDocumentTool(server, documentService);
+    registerListDocumentsTool(server, documentService);
+    registerGetDocumentTreeTool(server, documentService);
+    registerAddDocumentTool(server, documentService);
+    registerDownloadDocumentAttachmentTool(server, documentService);
+    registerDownloadDocumentMarkdownTool(server, documentService);
+    registerUploadDocumentMarkdownTool(server, documentService);
 
     // Stdioトランスポートで起動
     const transport = new StdioServerTransport();
