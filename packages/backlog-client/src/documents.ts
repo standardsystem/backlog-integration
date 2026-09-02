@@ -1,7 +1,9 @@
 import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, basename, extname } from 'node:path';
+import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import type { Entity } from 'backlog-js';
 import type { BacklogApiClient } from './client.js';
 import type {
     ListDocumentsOptions,
@@ -39,7 +41,7 @@ export class DocumentService {
      * @param documentId - ドキュメントID
      * @returns ドキュメントの詳細
      */
-    async getDocument(documentId: string) {
+    async getDocument(documentId: string): Promise<Entity.Document.Document> {
         const backlog = this.client.getClient();
         return await backlog.getDocument(documentId);
     }
@@ -50,7 +52,7 @@ export class DocumentService {
      * @param options - 検索条件
      * @returns ドキュメントの配列
      */
-    async listDocuments(options: ListDocumentsOptions = {}) {
+    async listDocuments(options: ListDocumentsOptions = {}): Promise<Entity.Document.Document[]> {
         const backlog = this.client.getClient();
         const params: Record<string, unknown> = {
             offset: options.offset ?? 0,
@@ -71,7 +73,7 @@ export class DocumentService {
      * @param projectIdOrKey - プロジェクトID もしくはキー
      * @returns ドキュメントツリー
      */
-    async getDocumentTree(projectIdOrKey: string | number) {
+    async getDocumentTree(projectIdOrKey: string | number): Promise<Entity.Document.DocumentTree> {
         const backlog = this.client.getClient();
         return await backlog.getDocumentTree(projectIdOrKey);
     }
@@ -82,7 +84,7 @@ export class DocumentService {
      * @param options - ドキュメント作成パラメータ
      * @returns 作成されたドキュメント
      */
-    async addDocument(options: AddDocumentOptions) {
+    async addDocument(options: AddDocumentOptions): Promise<Entity.Document.Document> {
         const backlog = this.client.getClient();
         const params: Record<string, unknown> = {
             projectId: options.projectId,
@@ -108,8 +110,8 @@ export class DocumentService {
      * @returns 削除された添付ファイル情報
      */
     async deleteAttachment(documentId: string, attachmentId: number) {
-        const backlog = this.client.getClient() as any;
-        return await backlog.delete(`documents/${documentId}/attachments/${attachmentId}`);
+        const backlog = this.client.getClient();
+        return await backlog.delete<unknown>(`documents/${documentId}/attachments/${attachmentId}`);
     }
 
     /**
@@ -127,12 +129,13 @@ export class DocumentService {
         const backlog = this.client.getClient();
         const fileData = await backlog.downloadDocumentAttachment(documentId, attachmentId);
 
-        const data = fileData as { body: NodeJS.ReadableStream; filename: string };
+        // Node.js 環境: body は Web ReadableStream（backlog-js 0.17 以降）なので Node.js ストリームに変換する
+        const body = Readable.fromWeb(fileData.body as ReadableStream);
 
         await mkdir(dirname(outputPath), { recursive: true });
 
         const writeStream = createWriteStream(outputPath);
-        await pipeline(data.body, writeStream);
+        await pipeline(body, writeStream);
     }
 
     /**
@@ -178,7 +181,7 @@ export class DocumentService {
      * @param options - プロジェクトID 等のドキュメント作成パラメータ
      * @returns 作成されたドキュメント
      */
-    async uploadMarkdown(filePath: string, options: UploadDocumentMarkdownOptions) {
+    async uploadMarkdown(filePath: string, options: UploadDocumentMarkdownOptions): Promise<Entity.Document.Document> {
         const raw = await readFile(filePath, 'utf8');
 
         // 先頭行が `# ...` ならタイトル候補として抽出

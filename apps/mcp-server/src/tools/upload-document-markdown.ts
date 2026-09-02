@@ -9,17 +9,19 @@ import type { DocumentService } from '@backlog-integration/backlog-client';
  * 先頭が `# Title` 行の場合、自動的にタイトルとして抽出します（title 未指定時のみ）。
  */
 export function registerUploadDocumentMarkdownTool(server: McpServer, documentService: DocumentService) {
-    server.tool(
+    server.registerTool(
         'upload_document_markdown',
-        'ローカルの Markdown ファイルを読み込んで新規ドキュメントを作成します。projectId は必須、filePath は絶対パスで指定してください。',
         {
-            filePath: z.string().describe('アップロードする Markdown ファイルの絶対パス'),
-            projectId: z.number().describe('プロジェクトID'),
-            title: z.string().optional()
-                .describe('ドキュメントタイトル（省略時は先頭の見出し行 or ファイル名から推測）'),
-            emoji: z.string().optional().describe('絵文字（任意）'),
-            parentId: z.string().optional().describe('親ドキュメントID'),
-            addLast: z.boolean().optional().describe('true のとき末尾に追加'),
+            description: 'ローカルの Markdown ファイルを読み込んで新規ドキュメントを作成します。projectId は必須、filePath は絶対パスで指定してください。',
+            inputSchema: {
+                filePath: z.string().describe('アップロードする Markdown ファイルの絶対パス'),
+                projectId: z.number().describe('プロジェクトID'),
+                title: z.string().optional()
+                    .describe('ドキュメントタイトル（省略時は先頭の見出し行 or ファイル名から推測）'),
+                emoji: z.string().optional().describe('絵文字（任意）'),
+                parentId: z.string().optional().describe('親ドキュメントID'),
+                addLast: z.boolean().optional().describe('true のとき末尾に追加'),
+            },
         },
         async ({ filePath, projectId, title, emoji, parentId, addLast }) => {
             try {

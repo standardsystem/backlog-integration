@@ -8,40 +8,42 @@ import type { IssueService } from '@backlog-integration/backlog-client';
  * 新しい課題を作成します。プロジェクトID、件名、課題タイプID、優先度IDは必須です。
  */
 export function registerCreateIssueTool(server: McpServer, issueService: IssueService) {
-    server.tool(
+    server.registerTool(
         'create_issue',
-        '新しい課題を作成します。プロジェクトID、件名、課題タイプID、優先度IDは必須です。',
         {
-            projectId: z.number().describe('プロジェクトID'),
-            summary: z.string().describe('件名'),
-            issueTypeId: z.number().describe('課題タイプID'),
-            priorityId: z.number().describe('優先度ID (2:高, 3:中, 4:低)'),
-            description: z.string().optional()
-                .describe('詳細'),
-            startDate: z.string().optional()
-                .describe('開始日（YYYY-MM-DD形式）'),
-            dueDate: z.string().optional()
-                .describe('期限日（YYYY-MM-DD形式）'),
-            estimatedHours: z.number().optional()
-                .describe('予定時間'),
-            actualHours: z.number().optional()
-                .describe('実績時間'),
-            assigneeId: z.number().optional()
-                .describe('担当者ID'),
-            categoryId: z.array(z.number()).optional()
-                .describe('カテゴリIDの配列'),
-            versionId: z.array(z.number()).optional()
-                .describe('発生バージョンIDの配列'),
-            milestoneId: z.array(z.number()).optional()
-                .describe('マイルストーンIDの配列'),
-            notifiedUserId: z.array(z.number()).optional()
-                .describe('通知先ユーザーIDの配列'),
-            parentIssueId: z.number().optional()
-                .describe('親課題ID'),
-            attachmentId: z.array(z.number()).optional()
-                .describe('添付ファイルIDの配列'),
-            uploadFilePaths: z.array(z.string()).optional()
-                .describe('ローカルファイルの絶対パスの配列（同時にアップロードして添付します）'),
+            description: '新しい課題を作成します。プロジェクトID、件名、課題タイプID、優先度IDは必須です。',
+            inputSchema: {
+                projectId: z.number().describe('プロジェクトID'),
+                summary: z.string().describe('件名'),
+                issueTypeId: z.number().describe('課題タイプID'),
+                priorityId: z.number().describe('優先度ID (2:高, 3:中, 4:低)'),
+                description: z.string().optional()
+                    .describe('詳細'),
+                startDate: z.string().optional()
+                    .describe('開始日（YYYY-MM-DD形式）'),
+                dueDate: z.string().optional()
+                    .describe('期限日（YYYY-MM-DD形式）'),
+                estimatedHours: z.number().optional()
+                    .describe('予定時間'),
+                actualHours: z.number().optional()
+                    .describe('実績時間'),
+                assigneeId: z.number().optional()
+                    .describe('担当者ID'),
+                categoryId: z.array(z.number()).optional()
+                    .describe('カテゴリIDの配列'),
+                versionId: z.array(z.number()).optional()
+                    .describe('発生バージョンIDの配列'),
+                milestoneId: z.array(z.number()).optional()
+                    .describe('マイルストーンIDの配列'),
+                notifiedUserId: z.array(z.number()).optional()
+                    .describe('通知先ユーザーIDの配列'),
+                parentIssueId: z.number().optional()
+                    .describe('親課題ID'),
+                attachmentId: z.array(z.number()).optional()
+                    .describe('添付ファイルIDの配列'),
+                uploadFilePaths: z.array(z.string()).optional()
+                    .describe('ローカルファイルの絶対パスの配列（同時にアップロードして添付します）'),
+            },
         },
         async (params) => {
             try {

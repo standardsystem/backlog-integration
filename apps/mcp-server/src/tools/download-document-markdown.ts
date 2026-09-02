@@ -9,12 +9,14 @@ import type { DocumentService } from '@backlog-integration/backlog-client';
  * タイトルは `# title` として先頭に付与されます。
  */
 export function registerDownloadDocumentMarkdownTool(server: McpServer, documentService: DocumentService) {
-    server.tool(
+    server.registerTool(
         'download_document_markdown',
-        'ドキュメント本文を Markdown ファイルとしてローカルに保存します。ドキュメントIDと保存先パスを指定してください。',
         {
-            documentId: z.string().describe('ドキュメントID'),
-            outputPath: z.string().describe('保存先の絶対パス（拡張子 .md 推奨）'),
+            description: 'ドキュメント本文を Markdown ファイルとしてローカルに保存します。ドキュメントIDと保存先パスを指定してください。',
+            inputSchema: {
+                documentId: z.string().describe('ドキュメントID'),
+                outputPath: z.string().describe('保存先の絶対パス（拡張子 .md 推奨）'),
+            },
         },
         async ({ documentId, outputPath }) => {
             try {

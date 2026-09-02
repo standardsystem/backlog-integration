@@ -17,8 +17,8 @@ import { Command } from 'commander';
 import * as dotenv from 'dotenv';
 import { BacklogApiClient, IssueService, type ListIssuesOptions } from '@backlog-integration/backlog-client';
 
-// .env ファイルの読み込み
-dotenv.config();
+// .env ファイルの読み込み（dotenv 17 以降は既定でログを出力するため quiet を指定）
+dotenv.config({ quiet: true });
 
 function createClient(): { apiClient: BacklogApiClient; issueService: IssueService } {
     const spaceId = process.env.BACKLOG_SPACE_ID;

@@ -8,12 +8,14 @@ import type { IssueService } from '@backlog-integration/backlog-client';
  * 課題の特定コメントをIDで取得します。
  */
 export function registerGetCommentTool(server: McpServer, issueService: IssueService) {
-    server.tool(
+    server.registerTool(
         'get_comment',
-        '課題の特定コメントを取得します。課題IDまたはキーとコメントIDを指定してください。',
         {
-            issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
-            commentId: z.number().describe('コメントID'),
+            description: '課題の特定コメントを取得します。課題IDまたはキーとコメントIDを指定してください。',
+            inputSchema: {
+                issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
+                commentId: z.number().describe('コメントID'),
+            },
         },
         async ({ issueIdOrKey, commentId }) => {
             try {

@@ -8,11 +8,13 @@ import type { DocumentService } from '@backlog-integration/backlog-client';
  * プロジェクトのドキュメントツリー（階層）を取得します。
  */
 export function registerGetDocumentTreeTool(server: McpServer, documentService: DocumentService) {
-    server.tool(
+    server.registerTool(
         'get_document_tree',
-        'プロジェクトのドキュメントツリーを取得します。プロジェクトIDまたはキーを指定してください。',
         {
-            projectIdOrKey: z.string().describe('プロジェクトIDまたはプロジェクトキー'),
+            description: 'プロジェクトのドキュメントツリーを取得します。プロジェクトIDまたはキーを指定してください。',
+            inputSchema: {
+                projectIdOrKey: z.string().describe('プロジェクトIDまたはプロジェクトキー'),
+            },
         },
         async ({ projectIdOrKey }) => {
             try {

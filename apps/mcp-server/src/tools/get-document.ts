@@ -8,11 +8,13 @@ import type { DocumentService } from '@backlog-integration/backlog-client';
  * ドキュメントIDを指定して、ドキュメントの詳細を取得します。
  */
 export function registerGetDocumentTool(server: McpServer, documentService: DocumentService) {
-    server.tool(
+    server.registerTool(
         'get_document',
-        'ドキュメントの詳細を取得します。ドキュメントIDを指定してください。',
         {
-            documentId: z.string().describe('ドキュメントID'),
+            description: 'ドキュメントの詳細を取得します。ドキュメントIDを指定してください。',
+            inputSchema: {
+                documentId: z.string().describe('ドキュメントID'),
+            },
         },
         async ({ documentId }) => {
             try {

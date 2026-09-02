@@ -8,28 +8,30 @@ import type { IssueService } from '@backlog-integration/backlog-client';
  * プロジェクトの課題一覧を取得します。
  */
 export function registerListIssuesTool(server: McpServer, issueService: IssueService) {
-    server.tool(
+    server.registerTool(
         'list_issues',
-        'プロジェクトの課題一覧を取得します。プロジェクトキー（例: PROJECT）を指定してください。',
         {
-            projectIdOrKey: z.string().describe('プロジェクトIDまたはキー（例: PROJECT）'),
-            statusId: z.array(z.number()).optional()
-                .describe('状態ID（1:未対応, 2:処理中, 3:処理済み, 4:完了）'),
-            assigneeId: z.array(z.number()).optional()
-                .describe('担当者IDの配列'),
-            keyword: z.string().optional()
-                .describe('キーワード検索'),
-            count: z.number().min(1).max(100).optional()
-                .describe('取得件数（デフォルト: 20, 最大: 100）'),
-            sort: z.enum([
-                'issueType', 'category', 'version', 'milestone', 'summary',
-                'status', 'priority', 'attachment', 'sharedFile', 'created',
-                'createdUser', 'updated', 'updatedUser', 'assignee',
-                'startDate', 'dueDate', 'estimatedHours', 'actualHours', 'childIssue',
-            ]).optional()
-                .describe('ソートキー'),
-            order: z.enum(['asc', 'desc']).optional()
-                .describe('ソート順'),
+            description: 'プロジェクトの課題一覧を取得します。プロジェクトキー（例: PROJECT）を指定してください。',
+            inputSchema: {
+                projectIdOrKey: z.string().describe('プロジェクトIDまたはキー（例: PROJECT）'),
+                statusId: z.array(z.number()).optional()
+                    .describe('状態ID（1:未対応, 2:処理中, 3:処理済み, 4:完了）'),
+                assigneeId: z.array(z.number()).optional()
+                    .describe('担当者IDの配列'),
+                keyword: z.string().optional()
+                    .describe('キーワード検索'),
+                count: z.number().min(1).max(100).optional()
+                    .describe('取得件数（デフォルト: 20, 最大: 100）'),
+                sort: z.enum([
+                    'issueType', 'category', 'version', 'milestone', 'summary',
+                    'status', 'priority', 'attachment', 'sharedFile', 'created',
+                    'createdUser', 'updated', 'updatedUser', 'assignee',
+                    'startDate', 'dueDate', 'estimatedHours', 'actualHours', 'childIssue',
+                ]).optional()
+                    .describe('ソートキー'),
+                order: z.enum(['asc', 'desc']).optional()
+                    .describe('ソート順'),
+            },
         },
         async ({ projectIdOrKey, statusId, assigneeId, keyword, count, sort, order }) => {
             try {

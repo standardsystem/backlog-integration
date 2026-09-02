@@ -14,8 +14,14 @@
 
 ### 前提条件
 
-- Node.js >= 18
-- pnpm
+- Node.js 24（最低 22.13 以上）
+- pnpm 11
+
+ツールのバージョンは `mise.toml` で管理しています。[mise](https://mise.jdx.dev/) を使う場合は以下でインストールできます:
+
+```bash
+mise install
+```
 
 ### インストール
 
@@ -61,10 +67,30 @@ BACKLOG_API_KEY=your-api-key
 
 提供ツール:
 
+課題:
+
 - `get_issue` - 課題の詳細を取得
 - `list_issues` - 課題一覧を取得
+- `create_issue` - 課題を作成
+- `update_issue` - 課題を更新（状態・担当者・期限など）
 - `add_comment` - コメントを追加
+- `get_comment` - コメントを取得
+- `list_comments` - コメント一覧を取得
 - `assign_to_reporter` - 担当者をレポーターに変更
+- `mcp_backlog_upload_attachment` - ローカルファイルを添付ファイルとしてアップロード
+- `download_attachment` - 課題の添付ファイルをダウンロード
+- `delete_issue_attachment` - 課題の添付ファイルを削除
+
+ドキュメント:
+
+- `get_document` - ドキュメントの詳細を取得
+- `list_documents` - ドキュメント一覧を取得
+- `get_document_tree` - ドキュメントツリーを取得
+- `add_document` - ドキュメントを作成
+- `upload_document_markdown` - ローカルの Markdown ファイルからドキュメントを作成
+- `download_document_markdown` - ドキュメント本文を Markdown ファイルとして保存
+- `download_document_attachment` - ドキュメントの添付ファイルをダウンロード
+- `delete_document_attachment` - ドキュメントの添付ファイルを削除
 
 ### CLIツール
 
