@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
 import { formatIssue } from '../lib/issue-format.js';
 import { issueSearchSchema, toListIssuesOptions } from '../lib/issue-search-schema.js';
 
@@ -47,25 +48,9 @@ export function registerListIssuesTool(server: McpServer, ctx: ToolContext) {
 
                 const formatted = issues.map((issue) => formatIssue(issue, ctx.api, fields));
 
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: JSON.stringify(formatted, null, 2),
-                        },
-                    ],
-                };
+                return jsonResult(formatted);
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `課題一覧の取得に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('課題一覧の取得に失敗しました', error);
             }
         }
     );

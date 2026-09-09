@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
 
 /**
  * upload_document_markdown ツールを登録する
@@ -32,25 +33,9 @@ export function registerUploadDocumentMarkdownTool(server: McpServer, ctx: ToolC
                     parentId,
                     addLast,
                 });
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: JSON.stringify(doc, null, 2),
-                        },
-                    ],
-                };
+                return jsonResult(doc);
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `Markdown ファイルからのドキュメント作成に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('Markdown ファイルからのドキュメント作成に失敗しました', error);
             }
         }
     );

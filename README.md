@@ -44,6 +44,15 @@ BACKLOG_SPACE_ID=your-space
 BACKLOG_API_KEY=your-api-key
 ```
 
+`BACKLOG_SPACE_ID` は `your-space` のほか、`your-space.backlog.jp` や
+`https://your-space.backlog.com/dashboard` の形式でも指定できます
+（サブドメインを取り出し、`backlog.jp` / `backlogtool.com` のスペースはホスト名の組み立ても切り替えます）。
+値の前後の空白は自動で取り除きます。
+
+MCP サーバーは起動時に `GET /users/myself` で疎通を確認し、失敗した場合は原因の分類
+（認証失敗 / 対象が見つかりません / 接続不可 など）と対処を stderr に出して終了します。
+ネットワーク不通でサーバーを落としたくない場合は `BACKLOG_SKIP_STARTUP_CHECK=1` を設定してください。
+
 ## 使い方
 
 ### MCPサーバー（AI連携）

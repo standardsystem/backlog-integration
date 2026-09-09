@@ -6,8 +6,9 @@
  * StdioトランスポートでBacklog操作ツールを提供します。
  *
  * 環境変数:
- * - BACKLOG_SPACE_ID: BacklogスペースID
+ * - BACKLOG_SPACE_ID: BacklogスペースID（URL やドメイン付きでも可）
  * - BACKLOG_API_KEY: Backlog APIキー
+ * - BACKLOG_SKIP_STARTUP_CHECK: 1 を指定すると起動時の疎通確認を省略する
  *
  * 使用方法:
  *   BACKLOG_SPACE_ID=xxx BACKLOG_API_KEY=yyy node dist/index.js
@@ -20,6 +21,8 @@ import {
     IssueService,
     DocumentService,
     ProjectService,
+    resolveBacklogConfig,
+    describeBacklogError,
 } from '@backlog-integration/backlog-client';
 
 import type { ToolContext } from './lib/context.js';
@@ -58,21 +61,63 @@ import { registerListCategoriesTool } from './tools/list-categories.js';
 import { registerListPrioritiesTool } from './tools/list-priorities.js';
 import { registerGetMyselfTool } from './tools/get-myself.js';
 
-async function main() {
-    // 環境変数の検証
-    const spaceId = process.env.BACKLOG_SPACE_ID;
-    const apiKey = process.env.BACKLOG_API_KEY;
+/**
+ * 起動時に Backlog への疎通を確認する
+ *
+ * 認証できていないことを最初のツール呼び出しまで気付けないと原因追跡が難しいため、
+ * `GET /users/myself` を 1 回だけ呼んで確認します。
+ * ネットワーク不通で MCP サーバー全体を落としたくない場合は
+ * 環境変数 `BACKLOG_SKIP_STARTUP_CHECK=1` で抑止できます。
+ *
+ * @param projects - メタ情報参照サービス
+ * @param host - 接続先ホスト名（ログ出力用）
+ */
+async function verifyConnection(projects: ProjectService, host: string): Promise<void> {
+    if (process.env.BACKLOG_SKIP_STARTUP_CHECK === '1') {
+        console.error(`[backlog-integration] 起動時の疎通確認をスキップしました（接続先: ${host}）。`);
+        return;
+    }
 
-    if (!spaceId || !apiKey) {
-        console.error('エラー: 環境変数 BACKLOG_SPACE_ID と BACKLOG_API_KEY を設定してください。');
+    try {
+        const myself = await projects.getMyself();
+        console.error(
+            `[backlog-integration] ${host} に接続しました（${myself.name} / ${myself.userId} / id: ${myself.id}）。`,
+        );
+    } catch (error) {
+        const detail = describeBacklogError(error);
+        console.error('[backlog-integration] Backlog への接続に失敗しました。');
+        console.error(`  接続先: https://${host}/api/v2/users/myself`);
+        console.error(`  原因: ${detail.category}${detail.status !== undefined ? `（HTTP ${detail.status}）` : ''}`);
+        console.error(`  詳細: ${detail.message}`);
+        for (const item of detail.errors) {
+            console.error(`  Backlog: ${item.message}`);
+        }
+        if (detail.remedy) {
+            console.error(`  対処: ${detail.remedy}`);
+        }
+        console.error('  疎通確認を省略して起動する場合は BACKLOG_SKIP_STARTUP_CHECK=1 を設定してください。');
+        process.exit(1);
+    }
+}
+
+async function main() {
+    // 環境変数の検証（前後の空白除去とスペースIDの正規化を含む）
+    let config;
+    try {
+        config = resolveBacklogConfig(process.env.BACKLOG_SPACE_ID, process.env.BACKLOG_API_KEY);
+    } catch (error) {
+        console.error(`エラー: ${error instanceof Error ? error.message : String(error)}`);
         console.error('');
         console.error('例:');
         console.error('  BACKLOG_SPACE_ID=your-space BACKLOG_API_KEY=your-api-key node dist/index.js');
+        console.error('');
+        console.error('BACKLOG_SPACE_ID には "your-space" のほか "your-space.backlog.jp" や');
+        console.error('"https://your-space.backlog.com" の形式も指定できます。');
         process.exit(1);
     }
 
     // Backlog クライアントの初期化
-    const apiClient = new BacklogApiClient({ spaceId, apiKey });
+    const apiClient = new BacklogApiClient(config);
     const projectService = new ProjectService(apiClient);
     const ctx: ToolContext = {
         api: apiClient,
@@ -81,6 +126,9 @@ async function main() {
         projects: projectService,
         resolver: new IssueFieldResolver(projectService),
     };
+
+    // 起動時に認証と接続先を確認する（失敗したら原因を出して終了する）
+    await verifyConnection(projectService, apiClient.getHost());
 
     // MCPサーバーの作成
     const server = new McpServer({
