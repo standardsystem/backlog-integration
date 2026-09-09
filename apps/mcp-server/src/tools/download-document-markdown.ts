@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
 
 /**
  * download_document_markdown ツールを登録する
@@ -21,30 +22,21 @@ export function registerDownloadDocumentMarkdownTool(server: McpServer, ctx: Too
         async ({ documentId, outputPath }) => {
             try {
                 const result = await ctx.documents.downloadAsMarkdown(documentId, outputPath);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: [
-                                `ドキュメント（ID: ${result.id}）を Markdown として保存しました。`,
-                                `タイトル: ${result.title}`,
-                                `保存先: ${outputPath}`,
-                                `サイズ: ${result.bytes} bytes`,
-                            ].join('\n'),
-                        },
-                    ],
-                };
+                return jsonResult({
+                    id: result.id,
+                    title: result.title,
+                    path: result.path,
+                    bytes: result.bytes,
+                    url: ctx.api.getDocumentUrl(result.id),
+                    message: [
+                        `ドキュメント（ID: ${result.id}）を Markdown として保存しました。`,
+                        `タイトル: ${result.title}`,
+                        `保存先: ${result.path}`,
+                        `サイズ: ${result.bytes} bytes`,
+                    ].join('\n'),
+                });
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `Markdown としてのダウンロードに失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('Markdown としてのダウンロードに失敗しました', error);
             }
         }
     );

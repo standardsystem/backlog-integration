@@ -23,6 +23,8 @@ export class BacklogApiClient {
     private readonly domain: BacklogDomain;
     /** プロジェクトキー → プロジェクトID の解決結果キャッシュ（プロセス内） */
     private readonly projectIdCache = new Map<string, number>();
+    /** 課題ID → 課題キー の解決結果キャッシュ（プロセス内） */
+    private readonly issueKeyCache = new Map<number, string>();
 
     constructor(config: BacklogClientConfig) {
         this.config = config;
@@ -127,5 +129,32 @@ export class BacklogApiClient {
         const projectId = (project as { id: number }).id;
         this.projectIdCache.set(cacheKey, projectId);
         return projectId;
+    }
+
+    /**
+     * 課題ID または 課題キーから、URL 組み立てに使う課題キーを解決する
+     *
+     * 課題キー（例: "PROJECT-123"）が渡された場合はそのまま返します。
+     * 数値ID が渡された場合のみ API を 1 回呼び、結果はプロセス内にキャッシュします。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @returns 課題キー。解決できなかった場合は undefined
+     */
+    async resolveIssueKey(issueIdOrKey: string | number): Promise<string | undefined> {
+        if (typeof issueIdOrKey === 'string') {
+            const trimmed = issueIdOrKey.trim();
+            // 「PROJECT-123」形式はそのまま課題キーとして扱う
+            if (/-\d+$/.test(trimmed)) return trimmed;
+            if (!/^\d+$/.test(trimmed)) return trimmed;
+            issueIdOrKey = Number(trimmed);
+        }
+
+        const cached = this.issueKeyCache.get(issueIdOrKey);
+        if (cached !== undefined) return cached;
+
+        const issue = await this.client.getIssue(issueIdOrKey);
+        const issueKey = (issue as { issueKey?: string }).issueKey;
+        if (issueKey) this.issueKeyCache.set(issueIdOrKey, issueKey);
+        return issueKey;
     }
 }

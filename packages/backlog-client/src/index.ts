@@ -28,6 +28,7 @@ export type {
     IssueSortKey,
     IssueParentChild,
     ListIssuesOptions,
+    DownloadedFile,
     AddCommentOptions,
     UpdateIssueOptions,
     ListCommentsOptions,

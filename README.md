@@ -65,6 +65,14 @@ BACKLOG_API_KEY=your-api-key
 }
 ```
 
+レスポンスの方針:
+
+- 課題・コメントを返すツールは、接続中のスペースから組み立てた `url` を含めます
+  （エージェントがスペース名を推測して誤ったURLを書くのを防ぐため）
+- 更新系ツール（`create_issue` / `update_issue` / `add_comment` / `assign_to_reporter`）は
+  JSON を返します。人向けの要約は `message` フィールドに残しています
+- ファイルを保存するツールは `{ path, bytes }` を含めます
+
 提供ツール:
 
 課題:

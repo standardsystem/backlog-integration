@@ -1,17 +1,20 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
+import { toCommentSummary } from '../lib/comment-format.js';
 
 /**
  * add_comment ツールを登録する
  *
- * 課題にコメントを追加します。
+ * 課題にコメントを追加します。担当者・状態の変更を同時に行うこともできます。
  */
 export function registerAddCommentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'add_comment',
         {
-            description: '課題にコメントを追加します。課題IDまたはキーとコメント内容を指定してください。',
+            description: '課題にコメントを追加します。課題IDまたはキーとコメント内容を指定してください。'
+                + '返却にはコメントIDと、そのコメントに直接飛べる url が含まれます。',
             inputSchema: {
                 issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
                 content: z.string().describe('コメント本文'),
@@ -30,7 +33,7 @@ export function registerAddCommentTool(server: McpServer, ctx: ToolContext) {
         async ({ issueIdOrKey, content, notifiedUserId, attachmentId, uploadFilePaths, assigneeId, statusId }) => {
             try {
                 const combinedAttachmentIds: number[] = [...(attachmentId || [])];
-                
+
                 if (uploadFilePaths && uploadFilePaths.length > 0) {
                     for (const filePath of uploadFilePaths) {
                         try {
@@ -45,7 +48,10 @@ export function registerAddCommentTool(server: McpServer, ctx: ToolContext) {
                 }
 
                 // アサイン変更やステータス変更の指定がある場合は updateIssue を使用する
-                let commentResult: any;
+                let comment: unknown;
+                let issueKey: string | undefined;
+                let commentLookupFailed = false;
+
                 if (assigneeId !== undefined || statusId !== undefined) {
                     // updateIssue には現状のステータスIDが必要な場合があるため、statusIdが未指定の場合は取得する
                     let resolvedStatusId = statusId ?? undefined;
@@ -54,40 +60,47 @@ export function registerAddCommentTool(server: McpServer, ctx: ToolContext) {
                         resolvedStatusId = (currentIssue as { status?: { id?: number } }).status?.id;
                     }
 
-                    commentResult = await ctx.issues.updateIssue(issueIdOrKey, {
+                    const updatedIssue = await ctx.issues.updateIssue(issueIdOrKey, {
                         comment: content,
                         notifiedUserId: notifiedUserId ?? undefined,
                         attachmentId: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : undefined,
                         assigneeId: assigneeId,
                         statusId: resolvedStatusId,
                     });
+                    issueKey = (updatedIssue as { issueKey?: string }).issueKey;
+
+                    // PATCH /issues のレスポンスはコメントを含まないため、投稿直後のコメントを引き当てる
+                    // （コメントを別途 POST するとお知らせが二重に飛ぶため、この方式を採る）
+                    comment = await ctx.issues.findRecentCommentByContent(issueIdOrKey, content);
+                    commentLookupFailed = comment === undefined;
                 } else {
-                    commentResult = await ctx.issues.addComment(issueIdOrKey, {
+                    comment = await ctx.issues.addComment(issueIdOrKey, {
                         content,
                         notifiedUserId: notifiedUserId ?? undefined,
                         attachmentId: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : undefined,
                     });
+                    issueKey = await ctx.api.resolveIssueKey(issueIdOrKey);
                 }
 
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `コメントを追加しました\n${combinedAttachmentIds.length > 0 ? `添付ファイルID: ${combinedAttachmentIds.join(', ')}\n` : ''}\n内容:\n${content}`,
-                        },
-                    ],
-                };
+                const summary = comment !== undefined
+                    ? toCommentSummary(comment, issueKey, ctx.api)
+                    : { id: null, issueKey, url: ctx.api.getIssueUrl(issueKey), content, created: null };
+
+                const messageLines = ['コメントを追加しました。'];
+                if (combinedAttachmentIds.length > 0) {
+                    messageLines.push(`添付ファイルID: ${combinedAttachmentIds.join(', ')}`);
+                }
+                if (commentLookupFailed) {
+                    messageLines.push('※ 課題更新と同時に投稿したため、コメントIDを特定できませんでした（投稿自体は成功しています）。');
+                }
+
+                return jsonResult({
+                    ...summary,
+                    attachmentIds: combinedAttachmentIds,
+                    message: messageLines.join('\n'),
+                });
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `コメントの追加に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('コメントの追加に失敗しました', error);
             }
         }
     );

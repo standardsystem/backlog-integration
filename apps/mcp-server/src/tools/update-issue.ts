@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
+import { toIssueWriteResult } from '../lib/issue-format.js';
 
 /**
  * update_issue ツールを登録する
@@ -87,41 +89,17 @@ export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
                     attachmentId: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : undefined,
                 });
 
-                const issue = updatedIssue as {
-                    issueKey?: string;
-                    summary?: string;
-                    status?: { name?: string };
-                    assignee?: { name?: string } | null;
-                    dueDate?: string | null;
-                };
-
-                const details = [
-                    `課題 ${issue.issueKey ?? params.issueIdOrKey} を更新しました。`,
-                    `件名: ${issue.summary ?? '不明'}`,
-                    `状態: ${issue.status?.name ?? '不明'}`,
-                    `担当者: ${issue.assignee?.name ?? '未割当'}`,
-                    `期限日: ${issue.dueDate ?? '未設定'}`,
-                ].join('\n');
-
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: details,
-                        },
-                    ],
-                };
+                const issueKey = (updatedIssue as { issueKey?: string }).issueKey;
+                return jsonResult({
+                    ...toIssueWriteResult(
+                        updatedIssue,
+                        ctx.api,
+                        `課題 ${issueKey ?? params.issueIdOrKey} を更新しました。`,
+                    ),
+                    attachmentIds: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : [],
+                });
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `課題の更新に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('課題の更新に失敗しました', error);
             }
         }
     );

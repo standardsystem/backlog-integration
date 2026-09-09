@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, stat } from 'node:fs/promises';
 import { dirname, basename } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -11,6 +11,7 @@ import type {
     UpdateIssueOptions,
     ListCommentsOptions,
     CreateIssueOptions,
+    DownloadedFile,
 } from './types.js';
 
 /**
@@ -259,17 +260,39 @@ export class IssueService {
     }
 
     /**
+     * 直近のコメントから、指定した本文と一致するものを探す
+     *
+     * `updateIssue`（PATCH /issues/:idOrKey）に `comment` を渡した場合、レスポンスは課題本体で
+     * コメントIDを含みません。投稿直後にこのメソッドで引き当てることで、通知を二重に飛ばさずに
+     * コメントIDとURLを取得します。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param content - 探すコメント本文
+     * @param searchCount - 新しい順に何件まで遡って探すか（既定: 5）
+     * @returns 一致したコメント。見つからない場合は undefined
+     */
+    async findRecentCommentByContent(
+        issueIdOrKey: string | number,
+        content: string,
+        searchCount = 5,
+    ): Promise<Entity.Issue.Comment | undefined> {
+        const comments = await this.listComments(issueIdOrKey, { count: searchCount, order: 'desc' });
+        return comments.find((comment) => comment.content === content);
+    }
+
+    /**
      * 課題の添付ファイルをダウンロードしてローカルに保存する
      *
      * @param issueIdOrKey - 課題ID または 課題キー
      * @param attachmentId - 添付ファイルID
      * @param outputPath - 保存先の絶対パス
+     * @returns 保存先パスと書き出したバイト数
      */
     async downloadAttachment(
         issueIdOrKey: string | number,
         attachmentId: number,
         outputPath: string,
-    ): Promise<void> {
+    ): Promise<DownloadedFile> {
         const backlog = this.client.getClient();
         const fileData = await backlog.getIssueAttachment(issueIdOrKey, attachmentId);
 
@@ -281,6 +304,9 @@ export class IssueService {
 
         const writeStream = createWriteStream(outputPath);
         await pipeline(body, writeStream);
+
+        const { size } = await stat(outputPath);
+        return { path: outputPath, bytes: size };
     }
 
     /**

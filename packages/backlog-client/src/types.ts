@@ -103,6 +103,16 @@ export interface ListIssuesOptions {
 }
 
 /**
+ * ローカルに保存したファイルの情報
+ */
+export interface DownloadedFile {
+    /** 保存先の絶対パス */
+    path: string;
+    /** 書き出したバイト数 */
+    bytes: number;
+}
+
+/**
  * コメント追加のオプション
  */
 export interface AddCommentOptions {

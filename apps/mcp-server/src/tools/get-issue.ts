@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
 
 /**
  * get_issue ツールを登録する
@@ -11,7 +12,8 @@ export function registerGetIssueTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'get_issue',
         {
-            description: '課題の詳細を取得します。課題IDまたはキー（例: PROJECT-123）を指定してください。',
+            description: '課題の詳細を取得します。課題IDまたはキー（例: PROJECT-123）を指定してください。'
+                + '返却の url は接続中のスペースから組み立てた課題URLです（スペース名を推測しないでください）。',
             inputSchema: {
                 issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
             },
@@ -19,25 +21,13 @@ export function registerGetIssueTool(server: McpServer, ctx: ToolContext) {
         async ({ issueIdOrKey }) => {
             try {
                 const issue = await ctx.issues.getIssue(issueIdOrKey);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: JSON.stringify(issue, null, 2),
-                        },
-                    ],
-                };
+                const issueKey = (issue as { issueKey?: string }).issueKey;
+                return jsonResult({
+                    ...issue,
+                    url: ctx.api.getIssueUrl(issueKey),
+                });
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `課題の取得に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('課題の取得に失敗しました', error);
             }
         }
     );

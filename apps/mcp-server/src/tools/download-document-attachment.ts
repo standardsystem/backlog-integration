@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
 
 /**
  * download_document_attachment ツールを登録する
@@ -20,26 +21,16 @@ export function registerDownloadDocumentAttachmentTool(server: McpServer, ctx: T
         },
         async ({ documentId, attachmentId, outputPath }) => {
             try {
-                await ctx.documents.downloadAttachment(documentId, attachmentId, outputPath);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `添付ファイル（ID: ${attachmentId}）を ${outputPath} に保存しました。`,
-                        },
-                    ],
-                };
+                const file = await ctx.documents.downloadAttachment(documentId, attachmentId, outputPath);
+                return jsonResult({
+                    id: attachmentId,
+                    documentId,
+                    path: file.path,
+                    bytes: file.bytes,
+                    message: `添付ファイル（ID: ${attachmentId}）を ${file.path} に保存しました。`,
+                });
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `ドキュメント添付ファイルのダウンロードに失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('ドキュメント添付ファイルのダウンロードに失敗しました', error);
             }
         }
     );

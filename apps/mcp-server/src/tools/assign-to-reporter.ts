@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
+import { toIssueWriteResult } from '../lib/issue-format.js';
 
 /**
  * assign_to_reporter ツールを登録する
@@ -25,27 +27,16 @@ export function registerAssignToReporterTool(server: McpServer, ctx: ToolContext
                     comment ?? undefined,
                 );
 
-                const assignee = (updatedIssue as { assignee?: { name?: string } | null }).assignee;
+                const issueKey = (updatedIssue as { issueKey?: string }).issueKey;
+                const assigneeName = (updatedIssue as { assignee?: { name?: string } | null }).assignee?.name;
 
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `課題 ${issueIdOrKey} の担当者をレポーターに変更しました。\n新しい担当者: ${assignee?.name ?? '不明'}`,
-                        },
-                    ],
-                };
+                return jsonResult(toIssueWriteResult(
+                    updatedIssue,
+                    ctx.api,
+                    `課題 ${issueKey ?? issueIdOrKey} の担当者をレポーター（${assigneeName ?? '不明'}）に変更しました。`,
+                ));
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `担当者の変更に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('担当者の変更に失敗しました', error);
             }
         }
     );
