@@ -18,6 +18,29 @@ export interface BacklogErrorDetail {
     remedy?: string;
     /** Backlog API が返した errors[] */
     errors: BacklogErrorMessage[];
+    /** `Retry-After` ヘッダで指定された待ち時間（ミリ秒）。指定が無ければ undefined */
+    retryAfterMs?: number;
+}
+
+/**
+ * レスポンスの `Retry-After` ヘッダを読み取る
+ *
+ * 秒数と HTTP-date のどちらの形式にも対応します。
+ *
+ * @param response - HTTP レスポンス
+ * @returns 待つべきミリ秒。指定が無い・解釈できない場合は undefined
+ */
+function parseRetryAfter(response: unknown): number | undefined {
+    const headers = (response as { headers?: { get?: (name: string) => string | null } } | undefined)?.headers;
+    const raw = headers?.get?.('retry-after');
+    if (!raw) return undefined;
+
+    const seconds = Number(raw);
+    if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+
+    const until = Date.parse(raw);
+    if (Number.isNaN(until)) return undefined;
+    return Math.max(0, until - Date.now());
 }
 
 /** HTTP ステータスごとの分類と対処 */
@@ -61,6 +84,7 @@ function isBacklogError(error: unknown): error is {
     name: string;
     status: number;
     body?: { errors?: BacklogErrorMessage[] };
+    response?: unknown;
 } {
     if (typeof error !== 'object' || error === null) return false;
     const candidate = error as { name?: unknown; status?: unknown };
@@ -90,6 +114,7 @@ export function describeBacklogError(error: unknown): BacklogErrorDetail {
                     + 'なお存在しないスペースIDを指定した場合もこの応答になるため、BACKLOG_SPACE_ID も確認してください。'
                     : undefined),
             errors: error.body?.errors ?? [],
+            retryAfterMs: parseRetryAfter(error.response),
         };
     }
 

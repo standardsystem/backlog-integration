@@ -10,6 +10,9 @@
  * - BACKLOG_API_KEY: Backlog APIキー
  * - BACKLOG_SKIP_STARTUP_CHECK: 1 を指定すると起動時の疎通確認を省略する
  *
+ * 起動時の疎通確認は認証失敗（HTTP 401）でのみ起動を中止します。
+ * 一時的な失敗では起動を続け、背景で指数バックオフしながら再試行します。
+ *
  * 使用方法:
  *   BACKLOG_SPACE_ID=xxx BACKLOG_API_KEY=yyy node dist/index.js
  */
@@ -22,10 +25,10 @@ import {
     DocumentService,
     ProjectService,
     resolveBacklogConfig,
-    describeBacklogError,
 } from '@backlog-integration/backlog-client';
 
 import type { ToolContext } from './lib/context.js';
+import { verifyBacklogConnection } from './lib/startup-check.js';
 import { IssueFieldResolver } from './lib/field-resolver.js';
 import { registerGetIssueTool } from './tools/get-issue.js';
 import { registerListIssuesTool } from './tools/list-issues.js';
@@ -61,16 +64,13 @@ import { registerListCategoriesTool } from './tools/list-categories.js';
 import { registerListPrioritiesTool } from './tools/list-priorities.js';
 import { registerGetMyselfTool } from './tools/get-myself.js';
 
-/** 起動時の疎通確認の待ち時間の上限（ミリ秒） */
-const STARTUP_CHECK_TIMEOUT_MS = 15000;
-
 /**
  * 起動時に Backlog への疎通を確認する
  *
- * 認証できていないことを最初のツール呼び出しまで気付けないと原因追跡が難しいため、
- * `GET /users/myself` を 1 回だけ呼んで確認します。
- * ネットワーク不通で MCP サーバー全体を落としたくない場合は
- * 環境変数 `BACKLOG_SKIP_STARTUP_CHECK=1` で抑止できます。
+ * 認証情報が誤っている（HTTP 401）ときだけ起動を中止します。
+ * レート制限・Backlog 側の障害・ネットワーク断のような一時的な失敗では起動を続け、
+ * 背景で指数バックオフしながら再試行します（ツールを失わせないため）。
+ * 疎通確認そのものを省きたい場合は `BACKLOG_SKIP_STARTUP_CHECK=1` を設定してください。
  *
  * @param projects - メタ情報参照サービス
  * @param host - 接続先ホスト名（ログ出力用）
@@ -81,35 +81,22 @@ async function verifyConnection(projects: ProjectService, host: string): Promise
         return;
     }
 
-    try {
-        // 応答が返らないまま起動が止まらないよう上限を設ける
-        const myself = await Promise.race([
-            projects.getMyself(),
-            new Promise<never>((_, reject) => {
-                setTimeout(
-                    () => reject(new Error(`${STARTUP_CHECK_TIMEOUT_MS} ms 以内に応答がありませんでした。`)),
-                    STARTUP_CHECK_TIMEOUT_MS,
-                ).unref();
-            }),
-        ]);
-        console.error(
-            `[backlog-integration] ${host} に接続しました（${myself.name} / ${myself.userId} / id: ${myself.id}）。`,
-        );
-    } catch (error) {
-        const detail = describeBacklogError(error);
-        console.error('[backlog-integration] Backlog への接続に失敗しました。');
-        console.error(`  接続先: https://${host}/api/v2/users/myself`);
-        console.error(`  原因: ${detail.category}${detail.status !== undefined ? `（HTTP ${detail.status}）` : ''}`);
-        console.error(`  詳細: ${detail.message}`);
-        for (const item of detail.errors) {
-            console.error(`  Backlog: ${item.message}`);
-        }
-        if (detail.remedy) {
-            console.error(`  対処: ${detail.remedy}`);
-        }
+    const { first, retrying } = await verifyBacklogConnection(host, {
+        probe: () => projects.getMyself(),
+        log: (message) => console.error(message),
+    });
+
+    if (first.kind === 'failed' && first.failure === 'auth') {
         console.error('  疎通確認を省略して起動する場合は BACKLOG_SKIP_STARTUP_CHECK=1 を設定してください。');
         process.exit(1);
     }
+
+    // 背景の再試行で認証失敗が判明した場合も、原因を出して終了する
+    retrying?.then((outcome) => {
+        if (outcome.kind === 'failed' && outcome.failure === 'auth') process.exit(1);
+    }).catch((error: unknown) => {
+        console.error('[backlog-integration] 疎通確認の再試行中に想定外のエラーが発生しました:', error);
+    });
 }
 
 async function main() {
