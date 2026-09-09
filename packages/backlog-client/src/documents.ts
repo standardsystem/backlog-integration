@@ -127,13 +127,15 @@ export class DocumentService {
         attachmentId: number,
         outputPath: string,
     ): Promise<DownloadedFile> {
+        // 出力先ディレクトリの作成を先に済ませる。
+        // 逆順にすると mkdir が失敗したときにレスポンスのストリームが解放されない。
+        await mkdir(dirname(outputPath), { recursive: true });
+
         const backlog = this.client.getClient();
         const fileData = await backlog.downloadDocumentAttachment(documentId, attachmentId);
 
         // Node.js 環境: body は Web ReadableStream（backlog-js 0.17 以降）なので Node.js ストリームに変換する
         const body = Readable.fromWeb(fileData.body as ReadableStream);
-
-        await mkdir(dirname(outputPath), { recursive: true });
 
         const writeStream = createWriteStream(outputPath);
         await pipeline(body, writeStream);

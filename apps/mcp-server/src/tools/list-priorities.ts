@@ -13,7 +13,9 @@ export function registerListPrioritiesTool(server: McpServer, ctx: ToolContext) 
         {
             description: 'スペースの優先度一覧を取得します。'
                 + 'create_issue / update_issue の priorityId に指定する数値IDを引くときに使ってください。',
-            inputSchema: {},
+            // 引数を取らないツールでは inputSchema を省略する。
+            // 空オブジェクト {} を渡すと MCP SDK が zod 検証を有効化してしまい、
+            // 仕様上 arguments を省略できるクライアントからの tools/call が -32602 で弾かれる。
         },
         async () => {
             try {

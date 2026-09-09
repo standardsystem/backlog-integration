@@ -61,6 +61,9 @@ import { registerListCategoriesTool } from './tools/list-categories.js';
 import { registerListPrioritiesTool } from './tools/list-priorities.js';
 import { registerGetMyselfTool } from './tools/get-myself.js';
 
+/** 起動時の疎通確認の待ち時間の上限（ミリ秒） */
+const STARTUP_CHECK_TIMEOUT_MS = 15000;
+
 /**
  * 起動時に Backlog への疎通を確認する
  *
@@ -79,7 +82,16 @@ async function verifyConnection(projects: ProjectService, host: string): Promise
     }
 
     try {
-        const myself = await projects.getMyself();
+        // 応答が返らないまま起動が止まらないよう上限を設ける
+        const myself = await Promise.race([
+            projects.getMyself(),
+            new Promise<never>((_, reject) => {
+                setTimeout(
+                    () => reject(new Error(`${STARTUP_CHECK_TIMEOUT_MS} ms 以内に応答がありませんでした。`)),
+                    STARTUP_CHECK_TIMEOUT_MS,
+                ).unref();
+            }),
+        ]);
         console.error(
             `[backlog-integration] ${host} に接続しました（${myself.name} / ${myself.userId} / id: ${myself.id}）。`,
         );

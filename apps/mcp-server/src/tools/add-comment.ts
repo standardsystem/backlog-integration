@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { formatBacklogError } from '@backlog-integration/backlog-client';
 import type { ToolContext } from '../lib/context.js';
 import { jsonResult, errorResult } from '../lib/tool-result.js';
 import { toCommentSummary } from '../lib/comment-format.js';
@@ -42,7 +43,8 @@ export function registerAddCommentTool(server: McpServer, ctx: ToolContext) {
                                 combinedAttachmentIds.push(fileInfo.id as number);
                             }
                         } catch (uploadError) {
-                            throw new Error(`ファイル '${filePath}' のアップロードに失敗しました: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`);
+                            // HTTP ステータスや Backlog の errors[] を落とさないよう、原因は formatBacklogError で整形する
+                            throw new Error(`ファイル '${filePath}' のアップロードに失敗しました: ${formatBacklogError(uploadError)}`, { cause: uploadError });
                         }
                     }
                 }

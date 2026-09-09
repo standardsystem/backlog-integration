@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { formatBacklogError } from '@backlog-integration/backlog-client';
 import type { ToolContext } from '../lib/context.js';
 import { jsonResult, errorResult } from '../lib/tool-result.js';
-import { toIssueWriteResult, collectIssueWarnings } from '../lib/issue-format.js';
+import { toIssueWriteResult, collectIssueWarnings, collectClearAttemptWarnings } from '../lib/issue-format.js';
 
 /** ID でも名前でも受け付ける項目 */
 const idOrName = z.union([z.string(), z.number()]);
@@ -36,10 +37,12 @@ export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
                         + '未割り当てにする場合は assigneeId に null を指定してください'),
                 issueTypeId: z.number().optional().describe('課題タイプID（issueType より優先）'),
                 issueType: idOrName.optional().describe('課題タイプ名またはID（例: "タスク"）'),
-                categoryId: z.array(z.number()).optional().describe('カテゴリIDの配列（category より優先）'),
+                categoryId: z.array(z.number()).optional()
+                    .describe('カテゴリIDの配列（category より優先）。空配列では解除できません（Backlog API の制約）'),
                 category: z.array(idOrName).optional().describe('カテゴリ名またはIDの配列'),
                 versionId: z.array(z.number()).optional().describe('発生バージョンIDの配列'),
-                milestoneId: z.array(z.number()).optional().describe('マイルストーンIDの配列（milestone より優先）'),
+                milestoneId: z.array(z.number()).optional()
+                    .describe('マイルストーンIDの配列（milestone より優先）。空配列では解除できません（Backlog API の制約）'),
                 milestone: z.array(idOrName).optional().describe('マイルストーン名またはIDの配列'),
                 priorityId: z.number().optional().describe('優先度ID (2:高, 3:中, 4:低)。priority より優先'),
                 priority: idOrName.optional().describe('優先度名またはID（"高" / "中" / "低" / high / normal / low）'),
@@ -70,7 +73,8 @@ export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
                                 combinedAttachmentIds.push(fileInfo.id as number);
                             }
                         } catch (uploadError) {
-                            throw new Error(`ファイル '${filePath}' のアップロードに失敗しました: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`);
+                            // HTTP ステータスや Backlog の errors[] を落とさないよう、原因は formatBacklogError で整形する
+                            throw new Error(`ファイル '${filePath}' のアップロードに失敗しました: ${formatBacklogError(uploadError)}`, { cause: uploadError });
                         }
                     }
                 }
@@ -162,7 +166,10 @@ export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
                         ctx.api,
                         `課題 ${issueKey ?? params.issueIdOrKey} を更新しました。`,
                     ),
-                    warnings: collectIssueWarnings(updatedIssue),
+                    warnings: [
+                        ...collectIssueWarnings(updatedIssue),
+                        ...collectClearAttemptWarnings(params),
+                    ],
                     attachmentIds: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : [],
                 });
             } catch (error) {

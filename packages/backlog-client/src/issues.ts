@@ -347,11 +347,12 @@ export class IssueService {
         attachmentId: number,
         outputPath: string,
     ): Promise<DownloadedFile> {
-        const body = await this.fetchAttachmentStream(issueIdOrKey, attachmentId);
-
-        // 出力先ディレクトリが存在しない場合は作成
+        // 出力先ディレクトリの作成を先に済ませる。
+        // 逆順にすると mkdir が失敗したときにレスポンスのストリームが解放されず、
+        // 接続が GC まで残ってしまう。
         await mkdir(dirname(outputPath), { recursive: true });
 
+        const body = await this.fetchAttachmentStream(issueIdOrKey, attachmentId);
         const writeStream = createWriteStream(outputPath);
         await pipeline(body, writeStream);
 
@@ -410,7 +411,9 @@ export class IssueService {
         const all = await this.listAttachments(issueIdOrKey);
 
         let targets = all;
-        if (attachmentIds !== undefined) {
+        // 空配列は「全件」とみなす（「0 件指定」と解釈すると、添付があるのに
+        // 何も保存されないまま成功扱いになり、呼び出し側が添付なしと誤認する）
+        if (attachmentIds !== undefined && attachmentIds.length > 0) {
             const wanted = new Set(attachmentIds);
             targets = all.filter((attachment) => wanted.has(attachment.id));
 

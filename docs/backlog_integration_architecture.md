@@ -110,7 +110,7 @@ await client.issues.assignToReporter('PROJECT-123');
 
 AIエージェント（Claude Desktop、Cursor、Cline等）から呼び出せるよう、MCPプロトコルでBacklog操作をツールとして公開:
 
-ツールは次の 4 系統に分かれます。**最新の一覧は [README](../README.md) の「提供ツール」を参照してください**
+ツールは次の 5 系統に分かれます。**最新の一覧は [README](../README.md) の「提供ツール」を参照してください**
 （この表は系統ごとの代表例です）。
 
 | 系統 | 代表的なツール | 役割 |

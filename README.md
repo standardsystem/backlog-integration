@@ -87,6 +87,12 @@ MCP サーバーは起動時に `GET /users/myself` で疎通を確認し、失�
 - `create_issue` / `update_issue` は期限日・マイルストーンが未設定のとき `warnings` に載せます
   （処理は止めません）
 
+既知の制約:
+
+- `update_issue` の `milestoneId` / `categoryId` / `versionId` に空配列を渡しても、
+  Backlog API のクエリ組み立ての都合で項目自体が送信されず、値は解除されません。
+  黙って成功と報告しないよう、この場合は `warnings` に載せています
+
 提供ツール:
 
 課題:

@@ -14,7 +14,7 @@ export function registerGetMyselfTool(server: McpServer, ctx: ToolContext) {
         {
             description: '接続中のアカウント（このMCPサーバーが使っているAPIキーの持ち主）の情報を取得します。'
                 + '自分のユーザIDを固定値で持たずに済むよう、担当者を自分に設定するときなどに使ってください。',
-            inputSchema: {},
+            // 引数を取らないツールでは inputSchema を省略する（list-priorities.ts と同じ理由）
         },
         async () => {
             try {

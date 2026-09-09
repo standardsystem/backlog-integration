@@ -4,6 +4,9 @@ import { join } from 'node:path';
 /** 連番を試す上限（無限ループ防止） */
 const MAX_NAME_ATTEMPTS = 10000;
 
+/** ファイル名 1 要素の長さの上限（NTFS は 255 文字。超えると open が ENOENT になる） */
+const MAX_NAME_LENGTH = 255;
+
 /** Windows でファイル名に使えない文字 */
 const INVALID_CHARS = /[\\/:*?"<>|]/g;
 
@@ -44,11 +47,13 @@ export function sanitizeFileName(fileName: string): string {
     let sanitized = (fileName ?? '')
         .replace(CONTROL_CHARS, '')
         .replace(INVALID_CHARS, '_')
-        // 末尾のドットと空白は Windows が落としてしまうため、あらかじめ除去する
-        .replace(/[. ]+$/, '')
-        .trim();
+        // 末尾のドットと空白（全角スペースなどを含む）は Windows が落とすため除去する。
+        // 全角スペースを先に落とさないと「foo.　」が "foo." として残り、
+        // エクスプローラーや PowerShell から開けないファイルになる。
+        .trim()
+        .replace(/[.\s]+$/u, '');
 
-    if (sanitized === '' || sanitized === '.' || sanitized === '..') return 'attachment';
+    if (sanitized === '') return 'attachment';
 
     const { stem, ext } = splitFileName(sanitized);
     if (RESERVED_NAMES.has(stem.toUpperCase())) {
@@ -56,6 +61,27 @@ export function sanitizeFileName(fileName: string): string {
     }
 
     return sanitized;
+}
+
+/**
+ * ファイル名が長さ上限を超えないように、拡張子より前の部分を切り詰める
+ *
+ * NTFS のファイル名は 255 文字までで、超えると `open` は EEXIST ではなく ENOENT を返します。
+ * サロゲートペア（絵文字など）を割らないよう、コードポイント単位で切ります。
+ *
+ * @param stem - 拡張子より前の部分
+ * @param reservedLength - 拡張子と連番サフィックスで消費する文字数
+ * @returns 切り詰めた stem
+ */
+function truncateStem(stem: string, reservedLength: number): string {
+    const limit = MAX_NAME_LENGTH - reservedLength;
+    if (stem.length <= limit) return stem;
+    if (limit <= 0) return '';
+
+    const cut = stem.slice(0, limit);
+    // 末尾がサロゲートペアの前半で終わっていたら、割らないよう 1 つ戻す
+    const lastUnit = cut.charCodeAt(cut.length - 1);
+    return lastUnit >= 0xd800 && lastUnit <= 0xdbff ? cut.slice(0, -1) : cut;
 }
 
 /**
@@ -78,7 +104,8 @@ export async function openUniqueFile(
     const { stem, ext } = splitFileName(fileName);
 
     for (let index = 1; index <= MAX_NAME_ATTEMPTS; index += 1) {
-        const candidateName = index === 1 ? fileName : `${stem} (${index})${ext}`;
+        const suffix = index === 1 ? '' : ` (${index})`;
+        const candidateName = `${truncateStem(stem, ext.length + suffix.length)}${suffix}${ext}`;
         const candidatePath = join(outputDir, candidateName);
 
         try {

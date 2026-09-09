@@ -19,7 +19,7 @@ export function registerDownloadIssueAttachmentsTool(server: McpServer, ctx: Too
                 issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
                 outputDir: z.string().describe('保存先ディレクトリの絶対パス（存在しなければ作成します）'),
                 attachmentIds: z.array(z.number()).optional()
-                    .describe('ダウンロードする添付ファイルIDの配列（省略時は課題の全添付）'),
+                    .describe('ダウンロードする添付ファイルIDの配列（省略時・空配列のときは課題の全添付）'),
             },
         },
         async ({ issueIdOrKey, outputDir, attachmentIds }) => {

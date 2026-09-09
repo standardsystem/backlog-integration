@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { formatBacklogError } from '@backlog-integration/backlog-client';
 import type { ToolContext } from '../lib/context.js';
 import { jsonResult, errorResult } from '../lib/tool-result.js';
 import { toIssueWriteResult, collectIssueWarnings } from '../lib/issue-format.js';
@@ -69,8 +70,9 @@ export function registerCreateIssueTool(server: McpServer, ctx: ToolContext) {
                     throw new Error('projectIdOrKey（プロジェクトキー）または projectId のどちらかを指定してください。');
                 }
 
-                // 名前解決に使うプロジェクト指定（キーがあればキーを優先してキャッシュを共有する）
-                const projectRef = params.projectIdOrKey ?? params.projectId!;
+                // 課題の作成先と名前解決先が食い違わないよう、優先順位を projectId 側に揃える
+                // （説明文どおり projectId 優先。ズレると別プロジェクトの課題種別IDなどを送ってしまう）
+                const projectRef = params.projectId ?? params.projectIdOrKey!;
                 const projectId = params.projectId ?? await ctx.api.resolveProjectId(params.projectIdOrKey!);
 
                 // ID 指定があればそちらを優先し、無ければ名前から解決する
@@ -123,7 +125,8 @@ export function registerCreateIssueTool(server: McpServer, ctx: ToolContext) {
                                 combinedAttachmentIds.push(fileInfo.id as number);
                             }
                         } catch (uploadError) {
-                            throw new Error(`ファイル '${filePath}' のアップロードに失敗しました: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`);
+                            // HTTP ステータスや Backlog の errors[] を落とさないよう、原因は formatBacklogError で整形する
+                            throw new Error(`ファイル '${filePath}' のアップロードに失敗しました: ${formatBacklogError(uploadError)}`, { cause: uploadError });
                         }
                     }
                 }
