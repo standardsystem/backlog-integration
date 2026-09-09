@@ -125,7 +125,8 @@ export class BacklogApiClient {
         const cached = this.projectIdCache.get(cacheKey);
         if (cached !== undefined) return cached;
 
-        const project = await this.client.getProject(trimmed);
+        // 内部でも getClient() を経由する（テストでクライアントを差し替えられるようにするため）
+        const project = await this.getClient().getProject(trimmed);
         const projectId = (project as { id: number }).id;
         this.projectIdCache.set(cacheKey, projectId);
         return projectId;
@@ -152,7 +153,7 @@ export class BacklogApiClient {
         const cached = this.issueKeyCache.get(issueIdOrKey);
         if (cached !== undefined) return cached;
 
-        const issue = await this.client.getIssue(issueIdOrKey);
+        const issue = await this.getClient().getIssue(issueIdOrKey);
         const issueKey = (issue as { issueKey?: string }).issueKey;
         if (issueKey) this.issueKeyCache.set(issueIdOrKey, issueKey);
         return issueKey;

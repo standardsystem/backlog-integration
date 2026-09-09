@@ -49,9 +49,15 @@ BACKLOG_API_KEY=your-api-key
 （サブドメインを取り出し、`backlog.jp` / `backlogtool.com` のスペースはホスト名の組み立ても切り替えます）。
 値の前後の空白は自動で取り除きます。
 
-MCP サーバーは起動時に `GET /users/myself` で疎通を確認し、失敗した場合は原因の分類
-（認証失敗 / 対象が見つかりません / 接続不可 など）と対処を stderr に出して終了します。
-ネットワーク不通でサーバーを落としたくない場合は `BACKLOG_SKIP_STARTUP_CHECK=1` を設定してください。
+MCP サーバーは起動時に `GET /users/myself` で疎通を確認します。失敗の種類によって扱いが変わります。
+
+| 失敗の種類 | 例 | 挙動 |
+| :--- | :--- | :--- |
+| 認証失敗 | HTTP 401 | 原因と対処を stderr に出して**終了する**（API キーが誤っているため、動かしても全ツールが失敗する） |
+| 一時的な失敗 | HTTP 429 / 5xx / ネットワーク断 / タイムアウト | **起動を続け**、背景で指数バックオフ（1s→2s→4s…、equal jitter、上限 60 秒、最大 5 回）しながら再試行する。`Retry-After` があればそれを優先する |
+| その他の失敗 | HTTP 400 / 403 / 404 | 再試行しても直らないため警告だけ出して**起動を続ける** |
+
+疎通確認そのものを省きたい場合は `BACKLOG_SKIP_STARTUP_CHECK=1` を設定してください。
 
 ## 使い方
 
@@ -87,11 +93,9 @@ MCP サーバーは起動時に `GET /users/myself` で疎通を確認し、失�
 - `create_issue` / `update_issue` は期限日・マイルストーンが未設定のとき `warnings` に載せます
   （処理は止めません）
 
-既知の制約:
-
-- `update_issue` の `milestoneId` / `categoryId` / `versionId` に空配列を渡しても、
-  Backlog API のクエリ組み立ての都合で項目自体が送信されず、値は解除されません。
-  黙って成功と報告しないよう、この場合は `warnings` に載せています
+- `update_issue` の `milestoneId` / `categoryId` / `versionId` に空配列 `[]` を渡すと、
+  その項目を解除します（Backlog API は `milestoneId[]=` の形でのみ解除を受け付けるため、
+  クライアント側で変換しています）
 
 提供ツール:
 
@@ -162,6 +166,40 @@ pnpm --filter @backlog-integration/cli start -- issue comment PROJECT-123 "対�
 # 担当者をレポーターに変更
 pnpm --filter @backlog-integration/cli start -- issue assign-reporter PROJECT-123
 ```
+
+## テスト
+
+Node.js 標準のテストランナー（`node:test`）を使います。追加の依存はありません。
+TypeScript のまま実行できないため、`tsconfig.test.json` で `dist-test/` にコンパイルしてから実行します。
+
+```bash
+# 全パッケージのビルド + テスト
+pnpm test
+
+# パッケージ単位
+pnpm --filter @backlog-integration/backlog-client test
+pnpm --filter @backlog-integration/mcp-server test
+```
+
+テストは 2 種類あります。
+
+| 種類 | 場所 | 内容 |
+| :--- | :--- | :--- |
+| ユニット・結合 | `test/*.test.ts` | ネットワークに出ない。ファイル名の正規化、検索条件の組み立て、名前解決、起動時のバックオフ、ツールのハンドラ、MCP プロトコル越しの `tools/list` / `tools/call` |
+| 実 API | `test/live/*.live.test.ts` | 実際の Backlog に接続。課題・コメント・添付・マイルストーンの作成から削除までを通しで確認する |
+
+実 API のテストは `.env`（または環境変数）に次の 3 つが揃っているときだけ実行され、
+揃っていなければ自動的にスキップされます。
+
+```bash
+BACKLOG_SPACE_ID=your-space
+BACKLOG_API_KEY=your-api-key
+BACKLOG_TEST_PROJECT_KEY=YOUR_TEST_PROJECT
+```
+
+> [!IMPORTANT]
+> 実 API のテストは課題・マイルストーン・カテゴリを作成し、終了時に削除します。
+> 必ずテスト専用のプロジェクトを指定してください。
 
 ### コアパッケージ（他プロジェクトから利用）
 

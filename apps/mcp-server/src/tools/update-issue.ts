@@ -3,7 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { formatBacklogError } from '@backlog-integration/backlog-client';
 import type { ToolContext } from '../lib/context.js';
 import { jsonResult, errorResult } from '../lib/tool-result.js';
-import { toIssueWriteResult, collectIssueWarnings, collectClearAttemptWarnings } from '../lib/issue-format.js';
+import { toIssueWriteResult, collectIssueWarnings } from '../lib/issue-format.js';
 
 /** ID でも名前でも受け付ける項目 */
 const idOrName = z.union([z.string(), z.number()]);
@@ -38,12 +38,15 @@ export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
                 issueTypeId: z.number().optional().describe('課題タイプID（issueType より優先）'),
                 issueType: idOrName.optional().describe('課題タイプ名またはID（例: "タスク"）'),
                 categoryId: z.array(z.number()).optional()
-                    .describe('カテゴリIDの配列（category より優先）。空配列では解除できません（Backlog API の制約）'),
-                category: z.array(idOrName).optional().describe('カテゴリ名またはIDの配列'),
-                versionId: z.array(z.number()).optional().describe('発生バージョンIDの配列'),
+                    .describe('カテゴリIDの配列（category より優先）。空配列 [] を渡すとカテゴリを解除します'),
+                category: z.array(idOrName).optional()
+                    .describe('カテゴリ名またはIDの配列。空配列 [] で解除'),
+                versionId: z.array(z.number()).optional()
+                    .describe('発生バージョンIDの配列。空配列 [] で解除'),
                 milestoneId: z.array(z.number()).optional()
-                    .describe('マイルストーンIDの配列（milestone より優先）。空配列では解除できません（Backlog API の制約）'),
-                milestone: z.array(idOrName).optional().describe('マイルストーン名またはIDの配列'),
+                    .describe('マイルストーンIDの配列（milestone より優先）。空配列 [] を渡すとマイルストーンを解除します'),
+                milestone: z.array(idOrName).optional()
+                    .describe('マイルストーン名またはIDの配列。空配列 [] で解除'),
                 priorityId: z.number().optional().describe('優先度ID (2:高, 3:中, 4:低)。priority より優先'),
                 priority: idOrName.optional().describe('優先度名またはID（"高" / "中" / "低" / high / normal / low）'),
                 startDate: z.string().optional().describe('開始日（YYYY-MM-DD形式）'),
@@ -166,10 +169,7 @@ export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
                         ctx.api,
                         `課題 ${issueKey ?? params.issueIdOrKey} を更新しました。`,
                     ),
-                    warnings: [
-                        ...collectIssueWarnings(updatedIssue),
-                        ...collectClearAttemptWarnings(params),
-                    ],
+                    warnings: collectIssueWarnings(updatedIssue),
                     attachmentIds: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : [],
                 });
             } catch (error) {

@@ -18,6 +18,21 @@ import type {
 import { sanitizeFileName, openUniqueFile } from './file-name.js';
 
 /**
+ * 課題更新で「値をすべて外す」意図の空配列を、Backlog が解除と解釈する形に変換する
+ *
+ * backlog-js は `qs.stringify(..., { arrayFormat: 'brackets' })` でクエリを組み立てるため、
+ * 空配列 `[]` は何も出力されず、その項目に触れなかったのと同じになります。
+ * 実 API で確認した結果、解除には空文字を 1 要素持つ配列（`milestoneId[]=`）が必要でした。
+ * 空文字そのもの（`milestoneId=`）は `error.unknownParameter` で拒否されます。
+ *
+ * @param values - 設定したいIDの配列
+ * @returns 値がある場合はそのまま、空配列の場合は解除を表す `['']`
+ */
+function toClearableArray(values: number[]): number[] | [''] {
+    return values.length > 0 ? values : [''];
+}
+
+/**
  * Backlog 課題操作モジュール
  *
  * 課題の取得、一覧表示、コメント追加、担当者変更などの操作を提供します。
@@ -184,9 +199,11 @@ export class IssueService {
         // 担当者を未割り当てにする場合は空文字を設定する
         if (options.assigneeId !== undefined) params.assigneeId = options.assigneeId === null ? '' : options.assigneeId;
         if (options.issueTypeId !== undefined) params.issueTypeId = options.issueTypeId;
-        if (options.categoryId !== undefined) params.categoryId = options.categoryId;
-        if (options.versionId !== undefined) params.versionId = options.versionId;
-        if (options.milestoneId !== undefined) params.milestoneId = options.milestoneId;
+        // カテゴリ・発生バージョン・マイルストーンの解除は `xxxId[]=`（空文字を 1 要素持つ配列）で送る。
+        // 空配列のままだとクエリ文字列に何も出力されず「その項目に触れない」と同義になってしまう。
+        if (options.categoryId !== undefined) params.categoryId = toClearableArray(options.categoryId);
+        if (options.versionId !== undefined) params.versionId = toClearableArray(options.versionId);
+        if (options.milestoneId !== undefined) params.milestoneId = toClearableArray(options.milestoneId);
         if (options.priorityId !== undefined) params.priorityId = options.priorityId;
         if (options.startDate !== undefined) params.startDate = options.startDate;
         if (options.dueDate !== undefined) params.dueDate = options.dueDate;
