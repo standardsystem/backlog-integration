@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, readFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { dirname, basename } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -15,7 +15,7 @@ import type {
     DownloadAttachmentsResult,
     DownloadedAttachment,
 } from './types.js';
-import { sanitizeFileName, buildUniqueFilePath } from './file-name.js';
+import { sanitizeFileName, openUniqueFile } from './file-name.js';
 
 /**
  * Backlog 課題操作モジュール
@@ -347,11 +347,7 @@ export class IssueService {
         attachmentId: number,
         outputPath: string,
     ): Promise<DownloadedFile> {
-        const backlog = this.client.getClient();
-        const fileData = await backlog.getIssueAttachment(issueIdOrKey, attachmentId);
-
-        // Node.js 環境: body は Web ReadableStream（backlog-js 0.17 以降）なので Node.js ストリームに変換する
-        const body = Readable.fromWeb(fileData.body as ReadableStream);
+        const body = await this.fetchAttachmentStream(issueIdOrKey, attachmentId);
 
         // 出力先ディレクトリが存在しない場合は作成
         await mkdir(dirname(outputPath), { recursive: true });
@@ -361,6 +357,24 @@ export class IssueService {
 
         const { size } = await stat(outputPath);
         return { path: outputPath, bytes: size };
+    }
+
+    /**
+     * 添付ファイルの本体を Node.js の読み取りストリームとして取得する
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param attachmentId - 添付ファイルID
+     * @returns ファイル内容の読み取りストリーム
+     */
+    private async fetchAttachmentStream(
+        issueIdOrKey: string | number,
+        attachmentId: number,
+    ): Promise<Readable> {
+        const backlog = this.client.getClient();
+        const fileData = await backlog.getIssueAttachment(issueIdOrKey, attachmentId);
+
+        // Node.js 環境: body は Web ReadableStream（backlog-js 0.17 以降）なので Node.js ストリームに変換する
+        return Readable.fromWeb(fileData.body as ReadableStream);
     }
 
     /**
@@ -413,21 +427,30 @@ export class IssueService {
 
         await mkdir(outputDir, { recursive: true });
 
-        // 同一呼び出し内で確保済みのパス（大文字小文字を区別しない Windows に合わせて小文字で保持）
-        const taken = new Set<string>();
         const files: DownloadedAttachment[] = [];
 
         for (const attachment of targets) {
             const fileName = sanitizeFileName(attachment.name);
-            const outputPath = await buildUniqueFilePath(outputDir, fileName, taken);
-            const saved = await this.downloadAttachment(issueIdOrKey, attachment.id, outputPath);
+            const { path: outputPath, handle } = await openUniqueFile(outputDir, fileName);
 
+            try {
+                const body = await this.fetchAttachmentStream(issueIdOrKey, attachment.id);
+                // createWriteStream はストリーム終了時にハンドルを閉じる
+                await pipeline(body, handle.createWriteStream());
+            } catch (error) {
+                // 途中で失敗した場合、確保した空ファイルを残さない
+                await handle.close().catch(() => undefined);
+                await rm(outputPath, { force: true });
+                throw error;
+            }
+
+            const { size } = await stat(outputPath);
             files.push({
                 id: attachment.id,
                 name: attachment.name,
                 size: attachment.size,
-                path: saved.path,
-                bytes: saved.bytes,
+                path: outputPath,
+                bytes: size,
             });
         }
 

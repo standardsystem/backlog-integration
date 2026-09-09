@@ -1,5 +1,8 @@
-import { access } from 'node:fs/promises';
+import { open, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
+
+/** 連番を試す上限（無限ループ防止） */
+const MAX_NAME_ATTEMPTS = 10000;
 
 /** Windows でファイル名に使えない文字 */
 const INVALID_CHARS = /[\\/:*?"<>|]/g;
@@ -56,47 +59,38 @@ export function sanitizeFileName(fileName: string): string {
 }
 
 /**
- * 指定ディレクトリ内で衝突しないファイルパスを決める
+ * 指定ディレクトリ内で衝突しないファイルを排他的に作成して開く
  *
  * 同名がある場合は `name (2).ext` `name (3).ext` … と連番を付けます。
- * ディスク上の既存ファイルに加えて、同一処理内で既に確保したパス（`taken`）とも衝突しないようにします。
- * Windows のファイルシステムは大文字小文字を区別しないため、比較は小文字化して行います。
+ * 「存在確認 → 書き込み」の 2 段階だと、同じディレクトリへ並行してダウンロードしたときに
+ * 片方が黙って上書きされうるため、`wx`（既存なら失敗する排他作成）で
+ * 名前の確保とファイル作成を 1 操作にまとめています。
  *
- * @param outputDir - 保存先ディレクトリ
- * @param fileName - 希望するファイル名（正規化済みであること）
- * @param taken - 同一処理内で既に確保したパスの集合（小文字化して保持・更新される）
- * @returns 衝突しない絶対パス
+ * @param outputDir - 保存先ディレクトリ（呼び出し前に作成しておくこと）
+ * @param fileName - 希望するファイル名（`sanitizeFileName` で正規化済みであること）
+ * @returns 作成したファイルのパスとハンドル（呼び出し側で必ず閉じること）
+ * @throws 連番の上限まで空きが見つからなかった場合
  */
-export async function buildUniqueFilePath(
+export async function openUniqueFile(
     outputDir: string,
     fileName: string,
-    taken: Set<string>,
-): Promise<string> {
+): Promise<{ path: string; handle: FileHandle }> {
     const { stem, ext } = splitFileName(fileName);
 
-    for (let index = 1; ; index += 1) {
+    for (let index = 1; index <= MAX_NAME_ATTEMPTS; index += 1) {
         const candidateName = index === 1 ? fileName : `${stem} (${index})${ext}`;
         const candidatePath = join(outputDir, candidateName);
-        const key = candidatePath.toLowerCase();
 
-        if (!taken.has(key) && !(await pathExists(candidatePath))) {
-            taken.add(key);
-            return candidatePath;
+        try {
+            const handle = await open(candidatePath, 'wx');
+            return { path: candidatePath, handle };
+        } catch (error) {
+            // 既存ファイルとの衝突だけを次の連番へ進める理由とし、権限エラーなどはそのまま投げる
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
         }
     }
-}
 
-/**
- * パスが存在するか調べる
- *
- * @param path - 調べるパス
- * @returns 存在すれば true
- */
-async function pathExists(path: string): Promise<boolean> {
-    try {
-        await access(path);
-        return true;
-    } catch {
-        return false;
-    }
+    throw new Error(
+        `${outputDir} に "${fileName}" を保存できませんでした（同名ファイルが ${MAX_NAME_ATTEMPTS} 件を超えています）。`,
+    );
 }
