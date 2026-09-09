@@ -1,7 +1,9 @@
 # Standard Node.js/pnpm ignore patterns
 node_modules/
 dist/
-lib/
+# 「lib/」と書くと apps/mcp-server/src/lib/ のようなソースディレクトリまで無視されるため、
+# ビルド出力はルート直下のものだけを対象にする
+/lib/
 *.tsbuildinfo
 .env
 .env.local
@@ -26,3 +28,5 @@ build/
 
 # Claude settings
 .claude/
+# Test build output
+dist-test/
