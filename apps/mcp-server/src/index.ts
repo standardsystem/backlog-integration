@@ -23,6 +23,7 @@ import {
 } from '@backlog-integration/backlog-client';
 
 import type { ToolContext } from './lib/context.js';
+import { IssueFieldResolver } from './lib/field-resolver.js';
 import { registerGetIssueTool } from './tools/get-issue.js';
 import { registerListIssuesTool } from './tools/list-issues.js';
 import { registerCountIssuesTool } from './tools/count-issues.js';
@@ -72,11 +73,13 @@ async function main() {
 
     // Backlog クライアントの初期化
     const apiClient = new BacklogApiClient({ spaceId, apiKey });
+    const projectService = new ProjectService(apiClient);
     const ctx: ToolContext = {
         api: apiClient,
         issues: new IssueService(apiClient),
         documents: new DocumentService(apiClient),
-        projects: new ProjectService(apiClient),
+        projects: projectService,
+        resolver: new IssueFieldResolver(projectService),
     };
 
     // MCPサーバーの作成

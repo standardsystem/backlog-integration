@@ -72,6 +72,11 @@ BACKLOG_API_KEY=your-api-key
 - 更新系ツール（`create_issue` / `update_issue` / `add_comment` / `assign_to_reporter`）は
   JSON を返します。人向けの要約は `message` フィールドに残しています
 - ファイルを保存するツールは `{ path, bytes }` を含めます
+- `create_issue` / `update_issue` は課題種別・優先度・マイルストーン・カテゴリ・状態・担当者を
+  ID でも名前でも受け付けます（`issueTypeId` などの ID 指定を併用した場合は ID が優先）。
+  名前が一意に決まらない場合は候補一覧つきのエラーになります
+- `create_issue` / `update_issue` は期限日・マイルストーンが未設定のとき `warnings` に載せます
+  （処理は止めません）
 
 提供ツール:
 
@@ -80,8 +85,8 @@ BACKLOG_API_KEY=your-api-key
 - `get_issue` - 課題の詳細を取得
 - `list_issues` - 課題一覧を取得（親課題・マイルストーン・期限日などで絞込、`offset` でページング）
 - `count_issues` - 条件に一致する課題の総件数を取得（ページングの終端判定用）
-- `create_issue` - 課題を作成
-- `update_issue` - 課題を更新（状態・担当者・期限など）
+- `create_issue` - 課題を作成（課題種別・優先度などは名前指定可）
+- `update_issue` - 課題を更新（状態・担当者・期限など。名前指定可）
 - `add_comment` - コメントを追加
 - `get_comment` - コメントを取得
 - `list_comments` - コメント一覧を取得
