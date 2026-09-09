@@ -70,7 +70,8 @@ BACKLOG_API_KEY=your-api-key
 課題:
 
 - `get_issue` - 課題の詳細を取得
-- `list_issues` - 課題一覧を取得
+- `list_issues` - 課題一覧を取得（親課題・マイルストーン・期限日などで絞込、`offset` でページング）
+- `count_issues` - 条件に一致する課題の総件数を取得（ページングの終端判定用）
 - `create_issue` - 課題を作成
 - `update_issue` - 課題を更新（状態・担当者・期限など）
 - `add_comment` - コメントを追加
@@ -100,6 +101,12 @@ pnpm --filter @backlog-integration/cli start -- issue get PROJECT-123
 
 # 課題一覧
 pnpm --filter @backlog-integration/cli start -- issue list PROJECT --status 1 2
+
+# 子課題の一覧（親課題IDで絞込）
+pnpm --filter @backlog-integration/cli start -- issue list PROJECT --parent-issue 12345678
+
+# 課題の総件数
+pnpm --filter @backlog-integration/cli start -- issue count PROJECT --status 1 2
 
 # コメント追加
 pnpm --filter @backlog-integration/cli start -- issue comment PROJECT-123 "対応しました"

@@ -23,6 +23,9 @@ export { IssueService } from './issues.js';
 export { DocumentService } from './documents.js';
 export type {
     BacklogClientConfig,
+    BacklogDomain,
+    IssueSortKey,
+    IssueParentChild,
     ListIssuesOptions,
     AddCommentOptions,
     UpdateIssueOptions,

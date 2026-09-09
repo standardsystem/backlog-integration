@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * get_issue ツールを登録する
  *
  * 課題IDまたはキーを指定して、課題の詳細を取得します。
  */
-export function registerGetIssueTool(server: McpServer, issueService: IssueService) {
+export function registerGetIssueTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'get_issue',
         {
@@ -18,7 +18,7 @@ export function registerGetIssueTool(server: McpServer, issueService: IssueServi
         },
         async ({ issueIdOrKey }) => {
             try {
-                const issue = await issueService.getIssue(issueIdOrKey);
+                const issue = await ctx.issues.getIssue(issueIdOrKey);
                 return {
                     content: [
                         {

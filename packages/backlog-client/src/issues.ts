@@ -3,7 +3,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, basename } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import type { Entity } from 'backlog-js';
+import type { Entity, Option } from 'backlog-js';
 import type { BacklogApiClient } from './client.js';
 import type {
     ListIssuesOptions,
@@ -55,6 +55,58 @@ export class IssueService {
     }
 
     /**
+     * 課題検索の条件を Backlog API のクエリパラメータに変換する
+     *
+     * `listIssues` と `countIssues` で同じ絞込条件を使えるように共通化しています。
+     * `projectIdOrKey` は数値IDへ解決したうえで `projectId[]` に詰めます。
+     *
+     * @param options - 検索条件
+     * @returns Backlog API「課題一覧の取得」のパラメータ
+     */
+    private async buildIssueSearchParams(options: ListIssuesOptions): Promise<Option.Issue.GetIssuesParams> {
+        const params: Record<string, unknown> = {};
+
+        if (options.projectIdOrKey !== undefined) {
+            // プロジェクトキー（文字列）は数値IDに変換する（結果はクライアント側でキャッシュされる）
+            params.projectId = [await this.client.resolveProjectId(options.projectIdOrKey)];
+        }
+
+        // 配列で指定する絞込条件（空配列は API に送らない）
+        const arrayKeys = [
+            'id', 'parentIssueId', 'issueTypeId', 'categoryId', 'versionId', 'milestoneId',
+            'statusId', 'priorityId', 'resolutionId', 'assigneeId', 'createdUserId',
+        ] as const;
+        for (const key of arrayKeys) {
+            const value = options[key];
+            if (value !== undefined && value.length > 0) params[key] = value;
+        }
+
+        // 真偽値で指定する絞込条件（false にも意味があるため undefined 判定で分岐する）
+        const booleanKeys = ['attachment', 'sharedFile', 'hasDueDate'] as const;
+        for (const key of booleanKeys) {
+            if (options[key] !== undefined) params[key] = options[key];
+        }
+
+        // 日付範囲（YYYY-MM-DD）
+        const dateKeys = [
+            'createdSince', 'createdUntil', 'updatedSince', 'updatedUntil',
+            'startDateSince', 'startDateUntil', 'dueDateSince', 'dueDateUntil',
+        ] as const;
+        for (const key of dateKeys) {
+            if (options[key] !== undefined) params[key] = options[key];
+        }
+
+        if (options.parentChild !== undefined) params.parentChild = options.parentChild;
+        if (options.keyword !== undefined) params.keyword = options.keyword;
+        if (options.count !== undefined) params.count = options.count;
+        if (options.offset !== undefined) params.offset = options.offset;
+        if (options.sort !== undefined) params.sort = options.sort;
+        if (options.order !== undefined) params.order = options.order;
+
+        return params as Option.Issue.GetIssuesParams;
+    }
+
+    /**
      * 課題の一覧を取得する
      *
      * @param options - 検索条件
@@ -62,51 +114,25 @@ export class IssueService {
      */
     async listIssues(options: ListIssuesOptions = {}): Promise<Entity.Issue.Issue[]> {
         const backlog = this.client.getClient();
-        const params: Record<string, unknown> = {};
-
-        if (options.projectIdOrKey !== undefined) {
-            let projectId: number;
-            if (typeof options.projectIdOrKey === 'number') {
-                projectId = options.projectIdOrKey;
-            } else {
-                // プロジェクトキー（文字列）を数値IDに変換
-                const project = await backlog.getProject(options.projectIdOrKey);
-                projectId = (project as { id: number }).id;
-            }
-            params.projectId = [projectId];
-        }
-        if (options.statusId) {
-            params.statusId = options.statusId;
-        }
-        if (options.assigneeId) {
-            params.assigneeId = options.assigneeId;
-        }
-        if (options.createdUserId) {
-            params.createdUserId = options.createdUserId;
-        }
-        if (options.issueTypeId) {
-            params.issueTypeId = options.issueTypeId;
-        }
-        if (options.categoryId) {
-            params.categoryId = options.categoryId;
-        }
-        if (options.keyword) {
-            params.keyword = options.keyword;
-        }
-        if (options.count !== undefined) {
-            params.count = options.count;
-        }
-        if (options.offset !== undefined) {
-            params.offset = options.offset;
-        }
-        if (options.sort) {
-            params.sort = options.sort;
-        }
-        if (options.order) {
-            params.order = options.order;
-        }
-
+        const params = await this.buildIssueSearchParams(options);
         return await backlog.getIssues(params);
+    }
+
+    /**
+     * 課題の総件数を取得する
+     *
+     * `listIssues` と同じ絞込条件を受け取ります。`count` / `offset` / `sort` / `order` は
+     * 件数取得では意味を持たないため無視されます。ページングの終端判定に使います。
+     *
+     * @param options - 検索条件
+     * @returns 条件に一致する課題の総件数
+     */
+    async countIssues(options: ListIssuesOptions = {}): Promise<number> {
+        const backlog = this.client.getClient();
+        const { count: _count, offset: _offset, sort: _sort, order: _order, ...rest } = options;
+        const params = await this.buildIssueSearchParams(rest);
+        const result = await backlog.getIssuesCount(params);
+        return result.count;
     }
 
     /**

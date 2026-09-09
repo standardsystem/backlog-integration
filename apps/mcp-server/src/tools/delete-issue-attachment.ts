@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * delete_issue_attachment ツールを登録する
  *
  * 課題に添付されたファイルを削除します。
  */
-export function registerDeleteIssueAttachmentTool(server: McpServer, issueService: IssueService) {
+export function registerDeleteIssueAttachmentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'delete_issue_attachment',
         {
@@ -19,7 +19,7 @@ export function registerDeleteIssueAttachmentTool(server: McpServer, issueServic
         },
         async ({ issueIdOrKey, attachmentId }) => {
             try {
-                const result = await issueService.deleteAttachment(issueIdOrKey, attachmentId);
+                const result = await ctx.issues.deleteAttachment(issueIdOrKey, attachmentId);
                 return {
                     content: [
                         {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { DocumentService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * download_document_markdown ツールを登録する
@@ -8,7 +8,7 @@ import type { DocumentService } from '@backlog-integration/backlog-client';
  * ドキュメント本文を Markdown (.md) ファイルとしてローカルに保存します。
  * タイトルは `# title` として先頭に付与されます。
  */
-export function registerDownloadDocumentMarkdownTool(server: McpServer, documentService: DocumentService) {
+export function registerDownloadDocumentMarkdownTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'download_document_markdown',
         {
@@ -20,7 +20,7 @@ export function registerDownloadDocumentMarkdownTool(server: McpServer, document
         },
         async ({ documentId, outputPath }) => {
             try {
-                const result = await documentService.downloadAsMarkdown(documentId, outputPath);
+                const result = await ctx.documents.downloadAsMarkdown(documentId, outputPath);
                 return {
                     content: [
                         {

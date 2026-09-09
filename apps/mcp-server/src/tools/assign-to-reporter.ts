@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * assign_to_reporter ツールを登録する
  *
  * 課題の担当者をレポーター（起票者）に変更します。
  */
-export function registerAssignToReporterTool(server: McpServer, issueService: IssueService) {
+export function registerAssignToReporterTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'assign_to_reporter',
         {
@@ -20,7 +20,7 @@ export function registerAssignToReporterTool(server: McpServer, issueService: Is
         },
         async ({ issueIdOrKey, comment }) => {
             try {
-                const updatedIssue = await issueService.assignToReporter(
+                const updatedIssue = await ctx.issues.assignToReporter(
                     issueIdOrKey,
                     comment ?? undefined,
                 );

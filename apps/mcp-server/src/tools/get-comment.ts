@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * get_comment ツールを登録する
  *
  * 課題の特定コメントをIDで取得します。
  */
-export function registerGetCommentTool(server: McpServer, issueService: IssueService) {
+export function registerGetCommentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'get_comment',
         {
@@ -19,7 +19,7 @@ export function registerGetCommentTool(server: McpServer, issueService: IssueSer
         },
         async ({ issueIdOrKey, commentId }) => {
             try {
-                const comment = await issueService.getComment(issueIdOrKey, commentId);
+                const comment = await ctx.issues.getComment(issueIdOrKey, commentId);
                 return {
                     content: [
                         {

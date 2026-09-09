@@ -17,8 +17,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { BacklogApiClient, IssueService, DocumentService } from '@backlog-integration/backlog-client';
 
+import type { ToolContext } from './lib/context.js';
 import { registerGetIssueTool } from './tools/get-issue.js';
 import { registerListIssuesTool } from './tools/list-issues.js';
+import { registerCountIssuesTool } from './tools/count-issues.js';
 import { registerAddCommentTool } from './tools/add-comment.js';
 import { registerAssignToReporterTool } from './tools/assign-to-reporter.js';
 import { registerUpdateIssueTool } from './tools/update-issue.js';
@@ -52,8 +54,11 @@ async function main() {
 
     // Backlog クライアントの初期化
     const apiClient = new BacklogApiClient({ spaceId, apiKey });
-    const issueService = new IssueService(apiClient);
-    const documentService = new DocumentService(apiClient);
+    const ctx: ToolContext = {
+        api: apiClient,
+        issues: new IssueService(apiClient),
+        documents: new DocumentService(apiClient),
+    };
 
     // MCPサーバーの作成
     const server = new McpServer({
@@ -62,27 +67,28 @@ async function main() {
     });
 
     // ツールの登録（課題）
-    registerGetIssueTool(server, issueService);
-    registerListIssuesTool(server, issueService);
-    registerAddCommentTool(server, issueService);
-    registerAssignToReporterTool(server, issueService);
-    registerUpdateIssueTool(server, issueService);
-    registerDownloadAttachmentTool(server, issueService);
-    registerGetCommentTool(server, issueService);
-    registerListCommentsTool(server, issueService);
-    registerCreateIssueTool(server, issueService);
-    registerUploadAttachmentTool(server, issueService);
-    registerDeleteIssueAttachmentTool(server, issueService);
+    registerGetIssueTool(server, ctx);
+    registerListIssuesTool(server, ctx);
+    registerCountIssuesTool(server, ctx);
+    registerAddCommentTool(server, ctx);
+    registerAssignToReporterTool(server, ctx);
+    registerUpdateIssueTool(server, ctx);
+    registerDownloadAttachmentTool(server, ctx);
+    registerGetCommentTool(server, ctx);
+    registerListCommentsTool(server, ctx);
+    registerCreateIssueTool(server, ctx);
+    registerUploadAttachmentTool(server, ctx);
+    registerDeleteIssueAttachmentTool(server, ctx);
 
     // ツールの登録（ドキュメント）
-    registerGetDocumentTool(server, documentService);
-    registerListDocumentsTool(server, documentService);
-    registerGetDocumentTreeTool(server, documentService);
-    registerAddDocumentTool(server, documentService);
-    registerDownloadDocumentAttachmentTool(server, documentService);
-    registerDownloadDocumentMarkdownTool(server, documentService);
-    registerUploadDocumentMarkdownTool(server, documentService);
-    registerDeleteDocumentAttachmentTool(server, documentService);
+    registerGetDocumentTool(server, ctx);
+    registerListDocumentsTool(server, ctx);
+    registerGetDocumentTreeTool(server, ctx);
+    registerAddDocumentTool(server, ctx);
+    registerDownloadDocumentAttachmentTool(server, ctx);
+    registerDownloadDocumentMarkdownTool(server, ctx);
+    registerUploadDocumentMarkdownTool(server, ctx);
+    registerDeleteDocumentAttachmentTool(server, ctx);
 
     // Stdioトランスポートで起動
     const transport = new StdioServerTransport();

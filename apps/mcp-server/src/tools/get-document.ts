@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { DocumentService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * get_document ツールを登録する
  *
  * ドキュメントIDを指定して、ドキュメントの詳細を取得します。
  */
-export function registerGetDocumentTool(server: McpServer, documentService: DocumentService) {
+export function registerGetDocumentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'get_document',
         {
@@ -18,7 +18,7 @@ export function registerGetDocumentTool(server: McpServer, documentService: Docu
         },
         async ({ documentId }) => {
             try {
-                const doc = await documentService.getDocument(documentId);
+                const doc = await ctx.documents.getDocument(documentId);
                 return {
                     content: [
                         {

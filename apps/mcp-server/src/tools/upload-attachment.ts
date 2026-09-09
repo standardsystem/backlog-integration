@@ -1,11 +1,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * 添付ファイルアップロードツールを登録する
  */
-export function registerUploadAttachmentTool(server: McpServer, issues: IssueService) {
+export function registerUploadAttachmentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'mcp_backlog_upload_attachment',
         {
@@ -21,7 +21,7 @@ create_issue や add_comment、update_issue の attachmentId 配列に指定す�
         async (params) => {
             try {
                 const { filePath, fileName } = params;
-                const result = await issues.uploadAttachment(filePath, fileName);
+                const result = await ctx.issues.uploadAttachment(filePath, fileName);
                 
                 return {
                     content: [

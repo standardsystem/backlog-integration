@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * update_issue ツールを登録する
  *
  * 課題のステータス変更、担当者変更、期限日の設定などを行います。
  */
-export function registerUpdateIssueTool(server: McpServer, issueService: IssueService) {
+export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'update_issue',
         {
@@ -48,7 +48,7 @@ export function registerUpdateIssueTool(server: McpServer, issueService: IssueSe
                 if (params.uploadFilePaths && params.uploadFilePaths.length > 0) {
                     for (const filePath of params.uploadFilePaths) {
                         try {
-                            const fileInfo = await issueService.uploadAttachment(filePath);
+                            const fileInfo = await ctx.issues.uploadAttachment(filePath);
                             if (fileInfo && typeof fileInfo === 'object' && 'id' in fileInfo) {
                                 combinedAttachmentIds.push(fileInfo.id as number);
                             }
@@ -62,11 +62,11 @@ export function registerUpdateIssueTool(server: McpServer, issueService: IssueSe
                 // Backlog API は patchIssue 時に statusId を必須とするため
                 let resolvedStatusId = params.statusId ?? undefined;
                 if (resolvedStatusId === undefined) {
-                    const currentIssue = await issueService.getIssue(params.issueIdOrKey);
+                    const currentIssue = await ctx.issues.getIssue(params.issueIdOrKey);
                     resolvedStatusId = (currentIssue as { status?: { id?: number } }).status?.id;
                 }
 
-                const updatedIssue = await issueService.updateIssue(params.issueIdOrKey, {
+                const updatedIssue = await ctx.issues.updateIssue(params.issueIdOrKey, {
                     summary: params.summary ?? undefined,
                     parentIssueId: params.parentIssueId,
                     description: params.description ?? undefined,

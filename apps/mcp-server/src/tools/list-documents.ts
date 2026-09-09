@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { DocumentService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * list_documents ツールを登録する
  *
  * ドキュメント一覧を取得します。
  */
-export function registerListDocumentsTool(server: McpServer, documentService: DocumentService) {
+export function registerListDocumentsTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'list_documents',
         {
@@ -29,7 +29,7 @@ export function registerListDocumentsTool(server: McpServer, documentService: Do
         },
         async (params) => {
             try {
-                const docs = await documentService.listDocuments(params);
+                const docs = await ctx.documents.listDocuments(params);
                 return {
                     content: [
                         {

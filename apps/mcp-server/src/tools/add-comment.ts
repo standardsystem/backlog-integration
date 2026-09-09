@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * add_comment ツールを登録する
  *
  * 課題にコメントを追加します。
  */
-export function registerAddCommentTool(server: McpServer, issueService: IssueService) {
+export function registerAddCommentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'add_comment',
         {
@@ -34,7 +34,7 @@ export function registerAddCommentTool(server: McpServer, issueService: IssueSer
                 if (uploadFilePaths && uploadFilePaths.length > 0) {
                     for (const filePath of uploadFilePaths) {
                         try {
-                            const fileInfo = await issueService.uploadAttachment(filePath);
+                            const fileInfo = await ctx.issues.uploadAttachment(filePath);
                             if (fileInfo && typeof fileInfo === 'object' && 'id' in fileInfo) {
                                 combinedAttachmentIds.push(fileInfo.id as number);
                             }
@@ -50,11 +50,11 @@ export function registerAddCommentTool(server: McpServer, issueService: IssueSer
                     // updateIssue には現状のステータスIDが必要な場合があるため、statusIdが未指定の場合は取得する
                     let resolvedStatusId = statusId ?? undefined;
                     if (resolvedStatusId === undefined) {
-                        const currentIssue = await issueService.getIssue(issueIdOrKey);
+                        const currentIssue = await ctx.issues.getIssue(issueIdOrKey);
                         resolvedStatusId = (currentIssue as { status?: { id?: number } }).status?.id;
                     }
 
-                    commentResult = await issueService.updateIssue(issueIdOrKey, {
+                    commentResult = await ctx.issues.updateIssue(issueIdOrKey, {
                         comment: content,
                         notifiedUserId: notifiedUserId ?? undefined,
                         attachmentId: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : undefined,
@@ -62,7 +62,7 @@ export function registerAddCommentTool(server: McpServer, issueService: IssueSer
                         statusId: resolvedStatusId,
                     });
                 } else {
-                    commentResult = await issueService.addComment(issueIdOrKey, {
+                    commentResult = await ctx.issues.addComment(issueIdOrKey, {
                         content,
                         notifiedUserId: notifiedUserId ?? undefined,
                         attachmentId: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : undefined,

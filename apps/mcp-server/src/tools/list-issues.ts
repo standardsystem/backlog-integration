@@ -1,27 +1,26 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
+import { formatIssue } from '../lib/issue-format.js';
+import { issueSearchSchema, toListIssuesOptions } from '../lib/issue-search-schema.js';
 
 /**
  * list_issues ツールを登録する
  *
- * プロジェクトの課題一覧を取得します。
+ * プロジェクトの課題一覧を、Backlog API の絞込条件・ページング付きで取得します。
  */
-export function registerListIssuesTool(server: McpServer, issueService: IssueService) {
+export function registerListIssuesTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'list_issues',
         {
-            description: 'プロジェクトの課題一覧を取得します。プロジェクトキー（例: PROJECT）を指定してください。',
+            description: '課題一覧を取得します。プロジェクトキー（例: PROJECT）のほか、親課題ID・マイルストーン・期限日などで絞り込めます。'
+                + '100件を超える場合は offset でページングし、総件数は count_issues で確認してください。',
             inputSchema: {
-                projectIdOrKey: z.string().describe('プロジェクトIDまたはキー（例: PROJECT）'),
-                statusId: z.array(z.number()).optional()
-                    .describe('状態ID（1:未対応, 2:処理中, 3:処理済み, 4:完了）'),
-                assigneeId: z.array(z.number()).optional()
-                    .describe('担当者IDの配列'),
-                keyword: z.string().optional()
-                    .describe('キーワード検索'),
+                ...issueSearchSchema,
                 count: z.number().min(1).max(100).optional()
                     .describe('取得件数（デフォルト: 20, 最大: 100）'),
+                offset: z.number().min(0).optional()
+                    .describe('取得開始位置（100件を超える課題を走査する際に使う）'),
                 sort: z.enum([
                     'issueType', 'category', 'version', 'milestone', 'summary',
                     'status', 'priority', 'attachment', 'sharedFile', 'created',
@@ -31,40 +30,28 @@ export function registerListIssuesTool(server: McpServer, issueService: IssueSer
                     .describe('ソートキー'),
                 order: z.enum(['asc', 'desc']).optional()
                     .describe('ソート順'),
+                fields: z.array(z.string()).optional()
+                    .describe('返却する項目名の配列。省略時は既定のサマリ（id, issueKey, summary, status, assignee, createdUser, priority, issueType, milestone, resolution, parentIssueId, startDate, dueDate, created, updated, url）。'
+                        + '["*"] を指定すると API の生レスポンスを返します。既定サマリに無い項目名（description, attachments など）も指定できます'),
             },
         },
-        async ({ projectIdOrKey, statusId, assigneeId, keyword, count, sort, order }) => {
+        async ({ count, offset, sort, order, fields, ...filters }) => {
             try {
-                const issues = await issueService.listIssues({
-                    projectIdOrKey,
-                    statusId: statusId ?? undefined,
-                    assigneeId: assigneeId ?? undefined,
-                    keyword: keyword ?? undefined,
+                const issues = await ctx.issues.listIssues({
+                    ...toListIssuesOptions(filters),
                     count: count ?? undefined,
+                    offset: offset ?? undefined,
                     sort: sort ?? undefined,
                     order: order ?? undefined,
                 });
 
-                // 課題一覧を見やすいサマリ形式で返す
-                const summary = (issues as Array<{
-                    issueKey?: string;
-                    summary?: string;
-                    status?: { name?: string };
-                    assignee?: { name?: string } | null;
-                    priority?: { name?: string };
-                }>).map((issue) => ({
-                    key: issue.issueKey,
-                    summary: issue.summary,
-                    status: issue.status?.name,
-                    assignee: issue.assignee?.name ?? '未割当',
-                    priority: issue.priority?.name,
-                }));
+                const formatted = issues.map((issue) => formatIssue(issue, ctx.api, fields));
 
                 return {
                     content: [
                         {
                             type: 'text' as const,
-                            text: JSON.stringify(summary, null, 2),
+                            text: JSON.stringify(formatted, null, 2),
                         },
                     ],
                 };

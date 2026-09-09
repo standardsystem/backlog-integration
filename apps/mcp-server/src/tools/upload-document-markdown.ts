@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { DocumentService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * upload_document_markdown ツールを登録する
@@ -8,7 +8,7 @@ import type { DocumentService } from '@backlog-integration/backlog-client';
  * ローカルの Markdown ファイルを読み込んで新規ドキュメントを作成します。
  * 先頭が `# Title` 行の場合、自動的にタイトルとして抽出します（title 未指定時のみ）。
  */
-export function registerUploadDocumentMarkdownTool(server: McpServer, documentService: DocumentService) {
+export function registerUploadDocumentMarkdownTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'upload_document_markdown',
         {
@@ -25,7 +25,7 @@ export function registerUploadDocumentMarkdownTool(server: McpServer, documentSe
         },
         async ({ filePath, projectId, title, emoji, parentId, addLast }) => {
             try {
-                const doc = await documentService.uploadMarkdown(filePath, {
+                const doc = await ctx.documents.uploadMarkdown(filePath, {
                     projectId,
                     title,
                     emoji,

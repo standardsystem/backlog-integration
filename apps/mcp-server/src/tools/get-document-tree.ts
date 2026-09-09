@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { DocumentService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * get_document_tree ツールを登録する
  *
  * プロジェクトのドキュメントツリー（階層）を取得します。
  */
-export function registerGetDocumentTreeTool(server: McpServer, documentService: DocumentService) {
+export function registerGetDocumentTreeTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'get_document_tree',
         {
@@ -20,7 +20,7 @@ export function registerGetDocumentTreeTool(server: McpServer, documentService: 
             try {
                 // 数値文字列も許容して数値に変換する
                 const key = /^\d+$/.test(projectIdOrKey) ? Number(projectIdOrKey) : projectIdOrKey;
-                const tree = await documentService.getDocumentTree(key);
+                const tree = await ctx.documents.getDocumentTree(key);
                 return {
                     content: [
                         {

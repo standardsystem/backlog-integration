@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { DocumentService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * delete_document_attachment ツールを登録する
  *
  * ドキュメントに添付されたファイルを削除します。
  */
-export function registerDeleteDocumentAttachmentTool(server: McpServer, documentService: DocumentService) {
+export function registerDeleteDocumentAttachmentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'delete_document_attachment',
         {
@@ -19,7 +19,7 @@ export function registerDeleteDocumentAttachmentTool(server: McpServer, document
         },
         async ({ documentId, attachmentId }) => {
             try {
-                const result = await documentService.deleteAttachment(documentId, attachmentId);
+                const result = await ctx.documents.deleteAttachment(documentId, attachmentId);
                 return {
                     content: [
                         {

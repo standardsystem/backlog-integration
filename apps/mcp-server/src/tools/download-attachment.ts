@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * download_attachment ツールを登録する
  *
  * 課題に添付されたファイルをローカルに保存します。
  */
-export function registerDownloadAttachmentTool(server: McpServer, issueService: IssueService) {
+export function registerDownloadAttachmentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'download_attachment',
         {
@@ -20,7 +20,7 @@ export function registerDownloadAttachmentTool(server: McpServer, issueService: 
         },
         async ({ issueIdOrKey, attachmentId, outputPath }) => {
             try {
-                await issueService.downloadAttachment(issueIdOrKey, attachmentId, outputPath);
+                await ctx.issues.downloadAttachment(issueIdOrKey, attachmentId, outputPath);
 
                 return {
                     content: [

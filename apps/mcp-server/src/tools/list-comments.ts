@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * list_comments ツールを登録する
  *
  * 課題のコメント一覧を取得します。
  */
-export function registerListCommentsTool(server: McpServer, issueService: IssueService) {
+export function registerListCommentsTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'list_comments',
         {
@@ -24,7 +24,7 @@ export function registerListCommentsTool(server: McpServer, issueService: IssueS
         },
         async ({ issueIdOrKey, minId, maxId, count, order }) => {
             try {
-                const comments = await issueService.listComments(issueIdOrKey, {
+                const comments = await ctx.issues.listComments(issueIdOrKey, {
                     minId: minId ?? undefined,
                     maxId: maxId ?? undefined,
                     count: count ?? undefined,

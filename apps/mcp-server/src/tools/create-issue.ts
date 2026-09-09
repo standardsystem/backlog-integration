@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
 
 /**
  * create_issue ツールを登録する
  *
  * 新しい課題を作成します。プロジェクトID、件名、課題タイプID、優先度IDは必須です。
  */
-export function registerCreateIssueTool(server: McpServer, issueService: IssueService) {
+export function registerCreateIssueTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'create_issue',
         {
@@ -52,7 +52,7 @@ export function registerCreateIssueTool(server: McpServer, issueService: IssueSe
                 if (params.uploadFilePaths && params.uploadFilePaths.length > 0) {
                     for (const filePath of params.uploadFilePaths) {
                         try {
-                            const fileInfo = await issueService.uploadAttachment(filePath);
+                            const fileInfo = await ctx.issues.uploadAttachment(filePath);
                             if (fileInfo && typeof fileInfo === 'object' && 'id' in fileInfo) {
                                 combinedAttachmentIds.push(fileInfo.id as number);
                             }
@@ -62,7 +62,7 @@ export function registerCreateIssueTool(server: McpServer, issueService: IssueSe
                     }
                 }
 
-                const createdIssue = await issueService.createIssue({
+                const createdIssue = await ctx.issues.createIssue({
                     projectId: params.projectId,
                     summary: params.summary,
                     issueTypeId: params.issueTypeId,
