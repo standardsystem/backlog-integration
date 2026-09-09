@@ -8,22 +8,24 @@ import type { IssueService } from '@backlog-integration/backlog-client';
  * 課題にコメントを追加します。
  */
 export function registerAddCommentTool(server: McpServer, issueService: IssueService) {
-    server.tool(
+    server.registerTool(
         'add_comment',
-        '課題にコメントを追加します。課題IDまたはキーとコメント内容を指定してください。',
         {
-            issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
-            content: z.string().describe('コメント本文'),
-            notifiedUserId: z.array(z.number()).optional()
-                .describe('通知先のユーザーIDの配列'),
-            attachmentId: z.array(z.number()).optional()
-                .describe('添付ファイルIDの配列'),
-            uploadFilePaths: z.array(z.string()).optional()
-                .describe('ローカルファイルの絶対パスの配列（同時にアップロードして添付します）'),
-            assigneeId: z.number().nullable().optional()
-                .describe('【拡張機能】担当者IDを変更する場合に指定（nullを指定すると未割り当て）'),
-            statusId: z.number().optional()
-                .describe('【拡張機能】状態IDを変更する場合に指定（1:未対応, 2:処理中, 3:処理済み, 4:完了）'),
+            description: '課題にコメントを追加します。課題IDまたはキーとコメント内容を指定してください。',
+            inputSchema: {
+                issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
+                content: z.string().describe('コメント本文'),
+                notifiedUserId: z.array(z.number()).optional()
+                    .describe('通知先のユーザーIDの配列'),
+                attachmentId: z.array(z.number()).optional()
+                    .describe('添付ファイルIDの配列'),
+                uploadFilePaths: z.array(z.string()).optional()
+                    .describe('ローカルファイルの絶対パスの配列（同時にアップロードして添付します）'),
+                assigneeId: z.number().nullable().optional()
+                    .describe('【拡張機能】担当者IDを変更する場合に指定（nullを指定すると未割り当て）'),
+                statusId: z.number().optional()
+                    .describe('【拡張機能】状態IDを変更する場合に指定（1:未対応, 2:処理中, 3:処理済み, 4:完了）'),
+            },
         },
         async ({ issueIdOrKey, content, notifiedUserId, attachmentId, uploadFilePaths, assigneeId, statusId }) => {
             try {

@@ -8,13 +8,15 @@ import type { IssueService } from '@backlog-integration/backlog-client';
  * 課題の担当者をレポーター（起票者）に変更します。
  */
 export function registerAssignToReporterTool(server: McpServer, issueService: IssueService) {
-    server.tool(
+    server.registerTool(
         'assign_to_reporter',
-        '課題の担当者をレポーター（起票者）に変更します。対応完了後に起票者に確認を戻す際などに使用します。',
         {
-            issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
-            comment: z.string().optional()
-                .describe('変更時に追加するコメント（省略時はデフォルトメッセージ）'),
+            description: '課題の担当者をレポーター（起票者）に変更します。対応完了後に起票者に確認を戻す際などに使用します。',
+            inputSchema: {
+                issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
+                comment: z.string().optional()
+                    .describe('変更時に追加するコメント（省略時はデフォルトメッセージ）'),
+            },
         },
         async ({ issueIdOrKey, comment }) => {
             try {

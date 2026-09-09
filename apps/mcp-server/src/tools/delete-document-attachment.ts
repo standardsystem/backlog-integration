@@ -8,12 +8,14 @@ import type { DocumentService } from '@backlog-integration/backlog-client';
  * ドキュメントに添付されたファイルを削除します。
  */
 export function registerDeleteDocumentAttachmentTool(server: McpServer, documentService: DocumentService) {
-    server.tool(
+    server.registerTool(
         'delete_document_attachment',
-        'ドキュメントに添付されたファイルを削除します。ドキュメントIDと添付ファイルIDを指定してください。',
         {
-            documentId: z.string().describe('ドキュメントID'),
-            attachmentId: z.number().describe('削除する添付ファイルID'),
+            description: 'ドキュメントに添付されたファイルを削除します。ドキュメントIDと添付ファイルIDを指定してください。',
+            inputSchema: {
+                documentId: z.string().describe('ドキュメントID'),
+                attachmentId: z.number().describe('削除する添付ファイルID'),
+            },
         },
         async ({ documentId, attachmentId }) => {
             try {

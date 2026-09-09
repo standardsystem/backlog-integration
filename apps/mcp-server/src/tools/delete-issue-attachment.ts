@@ -8,12 +8,14 @@ import type { IssueService } from '@backlog-integration/backlog-client';
  * 課題に添付されたファイルを削除します。
  */
 export function registerDeleteIssueAttachmentTool(server: McpServer, issueService: IssueService) {
-    server.tool(
+    server.registerTool(
         'delete_issue_attachment',
-        '課題に添付されたファイルを削除します。課題IDまたはキーと添付ファイルIDを指定してください。',
         {
-            issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
-            attachmentId: z.number().describe('削除する添付ファイルID'),
+            description: '課題に添付されたファイルを削除します。課題IDまたはキーと添付ファイルIDを指定してください。',
+            inputSchema: {
+                issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
+                attachmentId: z.number().describe('削除する添付ファイルID'),
+            },
         },
         async ({ issueIdOrKey, attachmentId }) => {
             try {

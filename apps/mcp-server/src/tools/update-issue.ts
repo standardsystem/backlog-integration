@@ -8,36 +8,38 @@ import type { IssueService } from '@backlog-integration/backlog-client';
  * 課題のステータス変更、担当者変更、期限日の設定などを行います。
  */
 export function registerUpdateIssueTool(server: McpServer, issueService: IssueService) {
-    server.tool(
+    server.registerTool(
         'update_issue',
-        '課題を更新します。ステータス変更、担当者変更、期限日の設定などが可能です。',
         {
-            issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
-            summary: z.string().optional().describe('件名'),
-            parentIssueId: z.number().nullable().optional().describe('親課題ID（nullを指定すると解除）'),
-            description: z.string().optional().describe('詳細'),
-            statusId: z.number().optional()
-                .describe('状態ID（1:未対応, 2:処理中, 3:処理済み, 4:完了）'),
-            assigneeId: z.number().nullable().optional()
-                .describe('担当者ID（nullを指定すると未割り当て）'),
-            issueTypeId: z.number().optional().describe('課題タイプID'),
-            categoryId: z.array(z.number()).optional().describe('カテゴリIDの配列'),
-            versionId: z.array(z.number()).optional().describe('発生バージョンIDの配列'),
-            milestoneId: z.array(z.number()).optional().describe('マイルストーンIDの配列'),
-            priorityId: z.number().optional().describe('優先度ID (2:高, 3:中, 4:低)'),
-            startDate: z.string().optional().describe('開始日（YYYY-MM-DD形式）'),
-            dueDate: z.string().optional()
-                .describe('期限日（YYYY-MM-DD形式）'),
-            estimatedHours: z.number().optional().describe('予定時間'),
-            actualHours: z.number().optional().describe('実績時間'),
-            resolutionId: z.number().optional().describe('完了理由ID (0:対応済み, 1:対応しない, 2:無効, 3:重複, 4:再現しない)'),
-            notifiedUserId: z.array(z.number()).optional().describe('通知先ユーザーIDの配列'),
-            comment: z.string().optional()
-                .describe('更新時に追加するコメント'),
-            attachmentId: z.array(z.number()).optional()
-                .describe('添付ファイルIDの配列'),
-            uploadFilePaths: z.array(z.string()).optional()
-                .describe('ローカルファイルの絶対パスの配列（同時にアップロードして添付します）'),
+            description: '課題を更新します。ステータス変更、担当者変更、期限日の設定などが可能です。',
+            inputSchema: {
+                issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
+                summary: z.string().optional().describe('件名'),
+                parentIssueId: z.number().nullable().optional().describe('親課題ID（nullを指定すると解除）'),
+                description: z.string().optional().describe('詳細'),
+                statusId: z.number().optional()
+                    .describe('状態ID（1:未対応, 2:処理中, 3:処理済み, 4:完了）'),
+                assigneeId: z.number().nullable().optional()
+                    .describe('担当者ID（nullを指定すると未割り当て）'),
+                issueTypeId: z.number().optional().describe('課題タイプID'),
+                categoryId: z.array(z.number()).optional().describe('カテゴリIDの配列'),
+                versionId: z.array(z.number()).optional().describe('発生バージョンIDの配列'),
+                milestoneId: z.array(z.number()).optional().describe('マイルストーンIDの配列'),
+                priorityId: z.number().optional().describe('優先度ID (2:高, 3:中, 4:低)'),
+                startDate: z.string().optional().describe('開始日（YYYY-MM-DD形式）'),
+                dueDate: z.string().optional()
+                    .describe('期限日（YYYY-MM-DD形式）'),
+                estimatedHours: z.number().optional().describe('予定時間'),
+                actualHours: z.number().optional().describe('実績時間'),
+                resolutionId: z.number().optional().describe('完了理由ID (0:対応済み, 1:対応しない, 2:無効, 3:重複, 4:再現しない)'),
+                notifiedUserId: z.array(z.number()).optional().describe('通知先ユーザーIDの配列'),
+                comment: z.string().optional()
+                    .describe('更新時に追加するコメント'),
+                attachmentId: z.array(z.number()).optional()
+                    .describe('添付ファイルIDの配列'),
+                uploadFilePaths: z.array(z.string()).optional()
+                    .describe('ローカルファイルの絶対パスの配列（同時にアップロードして添付します）'),
+            },
         },
         async (params) => {
             try {

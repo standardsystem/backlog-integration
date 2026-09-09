@@ -1,7 +1,9 @@
 import { createWriteStream } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, basename } from 'node:path';
+import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import type { Entity } from 'backlog-js';
 import type { BacklogApiClient } from './client.js';
 import type {
     ListIssuesOptions,
@@ -47,7 +49,7 @@ export class IssueService {
      * @param issueIdOrKey - 課題ID または 課題キー（例: "PROJECT-123"）
      * @returns 課題の詳細情報
      */
-    async getIssue(issueIdOrKey: string | number) {
+    async getIssue(issueIdOrKey: string | number): Promise<Entity.Issue.Issue> {
         const backlog = this.client.getClient();
         return await backlog.getIssue(issueIdOrKey);
     }
@@ -58,7 +60,7 @@ export class IssueService {
      * @param options - 検索条件
      * @returns 課題の配列
      */
-    async listIssues(options: ListIssuesOptions = {}) {
+    async listIssues(options: ListIssuesOptions = {}): Promise<Entity.Issue.Issue[]> {
         const backlog = this.client.getClient();
         const params: Record<string, unknown> = {};
 
@@ -114,7 +116,7 @@ export class IssueService {
      * @param options - コメント内容と通知設定
      * @returns 追加されたコメント
      */
-    async addComment(issueIdOrKey: string | number, options: AddCommentOptions) {
+    async addComment(issueIdOrKey: string | number, options: AddCommentOptions): Promise<Entity.Issue.Comment> {
         const backlog = this.client.getClient();
         const params: {
             content: string;
@@ -141,7 +143,7 @@ export class IssueService {
      * @param options - 更新内容
      * @returns 更新された課題
      */
-    async updateIssue(issueIdOrKey: string | number, options: UpdateIssueOptions) {
+    async updateIssue(issueIdOrKey: string | number, options: UpdateIssueOptions): Promise<Entity.Issue.Issue> {
         const backlog = this.client.getClient();
         const params: Record<string, unknown> = {};
 
@@ -178,7 +180,7 @@ export class IssueService {
      * @param comment - 変更時に追加するコメント（任意）
      * @returns 更新された課題
      */
-    async assignToReporter(issueIdOrKey: string | number, comment?: string) {
+    async assignToReporter(issueIdOrKey: string | number, comment?: string): Promise<Entity.Issue.Issue> {
         // まず課題の詳細を取得して起票者（createdUser）のIDを取得
         const issue = await this.getIssue(issueIdOrKey);
 
@@ -203,7 +205,7 @@ export class IssueService {
      * @param commentId - コメントID
      * @returns コメントの詳細情報
      */
-    async getComment(issueIdOrKey: string | number, commentId: number) {
+    async getComment(issueIdOrKey: string | number, commentId: number): Promise<Entity.Issue.Comment> {
         const backlog = this.client.getClient();
         return await backlog.getIssueComment(issueIdOrKey, commentId);
     }
@@ -218,7 +220,7 @@ export class IssueService {
     async listComments(
         issueIdOrKey: string | number,
         options: ListCommentsOptions = {},
-    ) {
+    ): Promise<Entity.Issue.Comment[]> {
         const backlog = this.client.getClient();
         const params: Record<string, unknown> = {};
 
@@ -245,14 +247,14 @@ export class IssueService {
         const backlog = this.client.getClient();
         const fileData = await backlog.getIssueAttachment(issueIdOrKey, attachmentId);
 
-        // Node.js 環境: body は PassThrough ストリーム
-        const data = fileData as { body: NodeJS.ReadableStream; filename: string };
+        // Node.js 環境: body は Web ReadableStream（backlog-js 0.17 以降）なので Node.js ストリームに変換する
+        const body = Readable.fromWeb(fileData.body as ReadableStream);
 
         // 出力先ディレクトリが存在しない場合は作成
         await mkdir(dirname(outputPath), { recursive: true });
 
         const writeStream = createWriteStream(outputPath);
-        await pipeline(data.body, writeStream);
+        await pipeline(body, writeStream);
     }
 
     /**
@@ -262,7 +264,7 @@ export class IssueService {
      * @param fileName - (任意) アップロード時のファイル名
      * @returns 添付ファイル情報
      */
-    async uploadAttachment(filePath: string, fileName?: string) {
+    async uploadAttachment(filePath: string, fileName?: string): Promise<Entity.File.FileInfo> {
         const backlog = this.client.getClient();
         
         const fileBuffer = await readFile(filePath);
@@ -273,7 +275,7 @@ export class IssueService {
         const formData = new FormData();
         formData.append('file', blob, name);
 
-        return await backlog.postSpaceAttachment(formData as any);
+        return await backlog.postSpaceAttachment(formData);
     }
 
     /**
@@ -283,7 +285,7 @@ export class IssueService {
      * @param attachmentId - 添付ファイルID
      * @returns 削除された添付ファイル情報
      */
-    async deleteAttachment(issueIdOrKey: string | number, attachmentId: number) {
+    async deleteAttachment(issueIdOrKey: string | number, attachmentId: number): Promise<Entity.File.IssueFileInfo> {
         const backlog = this.client.getClient();
         return await backlog.deleteIssueAttachment(issueIdOrKey, String(attachmentId));
     }
@@ -294,7 +296,7 @@ export class IssueService {
      * @param options - 課題作成パラメータ（projectId, summary, issueTypeId, priorityId は必須）
      * @returns 作成された課題
      */
-    async createIssue(options: CreateIssueOptions) {
+    async createIssue(options: CreateIssueOptions): Promise<Entity.Issue.Issue> {
         const backlog = this.client.getClient();
         const params: Record<string, unknown> = {
             projectId: options.projectId,
