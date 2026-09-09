@@ -21,9 +21,20 @@
 export { BacklogApiClient } from './client.js';
 export { IssueService } from './issues.js';
 export { DocumentService } from './documents.js';
+export { ProjectService } from './projects.js';
+export { sanitizeFileName, splitFileName, openUniqueFile } from './file-name.js';
+export { resolveBacklogConfig, parseSpaceId } from './config.js';
+export { describeBacklogError, formatBacklogError } from './errors.js';
+export type { BacklogErrorDetail, BacklogErrorMessage } from './errors.js';
 export type {
     BacklogClientConfig,
+    BacklogDomain,
+    IssueSortKey,
+    IssueParentChild,
     ListIssuesOptions,
+    DownloadedFile,
+    DownloadedAttachment,
+    DownloadAttachmentsResult,
     AddCommentOptions,
     UpdateIssueOptions,
     ListCommentsOptions,

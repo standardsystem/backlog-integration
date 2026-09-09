@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, basename, extname } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -9,6 +9,7 @@ import type {
     ListDocumentsOptions,
     AddDocumentOptions,
     UploadDocumentMarkdownOptions,
+    DownloadedFile,
 } from './types.js';
 
 /**
@@ -125,17 +126,22 @@ export class DocumentService {
         documentId: string,
         attachmentId: number,
         outputPath: string,
-    ): Promise<void> {
+    ): Promise<DownloadedFile> {
+        // 出力先ディレクトリの作成を先に済ませる。
+        // 逆順にすると mkdir が失敗したときにレスポンスのストリームが解放されない。
+        await mkdir(dirname(outputPath), { recursive: true });
+
         const backlog = this.client.getClient();
         const fileData = await backlog.downloadDocumentAttachment(documentId, attachmentId);
 
         // Node.js 環境: body は Web ReadableStream（backlog-js 0.17 以降）なので Node.js ストリームに変換する
         const body = Readable.fromWeb(fileData.body as ReadableStream);
 
-        await mkdir(dirname(outputPath), { recursive: true });
-
         const writeStream = createWriteStream(outputPath);
         await pipeline(body, writeStream);
+
+        const { size } = await stat(outputPath);
+        return { path: outputPath, bytes: size };
     }
 
     /**
@@ -146,12 +152,12 @@ export class DocumentService {
      *
      * @param documentId - ドキュメントID
      * @param outputPath - 保存先の絶対パス（.md 推奨）
-     * @returns 書き出したドキュメントの id, title, 文字数
+     * @returns 書き出したドキュメントの id, title, 保存先パス, バイト数
      */
     async downloadAsMarkdown(
         documentId: string,
         outputPath: string,
-    ): Promise<{ id: string; title: string; bytes: number }> {
+    ): Promise<DownloadedFile & { id: string; title: string }> {
         const doc = await this.getDocument(documentId) as {
             id: string;
             title: string;
@@ -167,6 +173,7 @@ export class DocumentService {
         return {
             id: doc.id,
             title: doc.title,
+            path: outputPath,
             bytes: Buffer.byteLength(body, 'utf8'),
         };
     }

@@ -9,11 +9,13 @@
     },
     "scripts": {
         "build": "tsc",
-        "clean": "rimraf dist",
+        "clean": "rimraf dist dist-test",
         "start": "node dist/index.js",
         "dev": "tsc --watch",
-        "typecheck": "tsc --noEmit",
-        "lint": "echo 'lint passed'"
+        "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
+        "lint": "echo 'lint passed'",
+        "pretest": "tsc && tsc -p tsconfig.test.json",
+        "test": "node --test \"dist-test/test/**/*.test.js\""
     },
     "dependencies": {
         "@backlog-integration/backlog-client": "workspace:*",

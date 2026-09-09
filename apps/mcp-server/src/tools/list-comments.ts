@@ -1,17 +1,20 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
+import { withCommentUrl } from '../lib/comment-format.js';
 
 /**
  * list_comments ツールを登録する
  *
  * 課題のコメント一覧を取得します。
  */
-export function registerListCommentsTool(server: McpServer, issueService: IssueService) {
+export function registerListCommentsTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'list_comments',
         {
-            description: '課題のコメント一覧を取得します。課題IDまたはキーを指定してください。',
+            description: '課題のコメント一覧を取得します。課題IDまたはキーを指定してください。'
+                + '1回の取得は最大100件です。総件数は count_comments で確認してください。',
             inputSchema: {
                 issueIdOrKey: z.string().describe('課題IDまたは課題キー（例: PROJECT-123）'),
                 minId: z.number().optional().describe('最小コメントID'),
@@ -24,31 +27,16 @@ export function registerListCommentsTool(server: McpServer, issueService: IssueS
         },
         async ({ issueIdOrKey, minId, maxId, count, order }) => {
             try {
-                const comments = await issueService.listComments(issueIdOrKey, {
+                const comments = await ctx.issues.listComments(issueIdOrKey, {
                     minId: minId ?? undefined,
                     maxId: maxId ?? undefined,
                     count: count ?? undefined,
                     order: order ?? undefined,
                 });
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: JSON.stringify(comments, null, 2),
-                        },
-                    ],
-                };
+                const issueKey = await ctx.api.resolveIssueKey(issueIdOrKey);
+                return jsonResult(comments.map((comment) => withCommentUrl(comment, issueKey, ctx.api)));
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `コメント一覧の取得に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('コメント一覧の取得に失敗しました', error);
             }
         }
     );

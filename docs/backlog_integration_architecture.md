@@ -110,12 +110,25 @@ await client.issues.assignToReporter('PROJECT-123');
 
 AIエージェント（Claude Desktop、Cursor、Cline等）から呼び出せるよう、MCPプロトコルでBacklog操作をツールとして公開:
 
-| ツール名 | 説明 | パラメータ |
+ツールは次の 5 系統に分かれます。**最新の一覧は [README](../README.md) の「提供ツール」を参照してください**
+（この表は系統ごとの代表例です）。
+
+| 系統 | 代表的なツール | 役割 |
 | :--- | :--- | :--- |
-| `get_issue` | 課題の詳細を取得 | `issueIdOrKey` |
-| `add_comment` | 課題にコメントを追加 | `issueIdOrKey`, `content` |
-| `assign_to_reporter` | 担当者をレポーターに変更 | `issueIdOrKey` |
-| `list_issues` | プロジェクトの課題一覧を取得 | `projectIdOrKey`, `statusId[]`, `assigneeId[]` 等 |
+| 課題 | `get_issue` / `list_issues` / `count_issues` / `create_issue` / `update_issue` / `assign_to_reporter` | 課題の参照・作成・更新。`list_issues` は親課題・マイルストーン・期限日などで絞り込み、`offset` でページングする |
+| コメント | `add_comment` / `get_comment` / `list_comments` / `count_comments` / `update_comment` / `delete_comment` | コメントの参照・投稿・修正 |
+| 添付ファイル | `upload_attachment` / `list_issue_attachments` / `download_attachment` / `download_issue_attachments` / `delete_issue_attachment` | 添付の授受。`download_issue_attachments` は 1 回で全件保存する |
+| メタ情報 | `get_project` / `list_project_users` / `list_milestones` / `list_statuses` / `list_issue_types` / `list_categories` / `list_priorities` / `get_myself` | 担当者・マイルストーン・カスタムステータスなどの ID を名前から引く（読み取り専用） |
+| ドキュメント | `get_document` / `list_documents` / `get_document_tree` / `add_document` / `upload_document_markdown` / `download_document_markdown` | Backlog ドキュメントと Markdown の往復 |
+
+設計上の約束事:
+
+- 課題・コメントを返すツールは、接続中のスペースから組み立てた `url` を必ず含める
+  （エージェントがスペース名を推測して誤った URL を書く事故を防ぐため）
+- 更新系ツールは JSON を返し、人向けの要約は `message` フィールドに載せる
+- `create_issue` / `update_issue` は課題種別・優先度・マイルストーン・カテゴリ・状態・担当者を
+  ID でも名前でも受け付ける（サーバー側でメタ情報を引いて解決し、プロジェクト単位でキャッシュする）
+- エラー返却には HTTP ステータスと Backlog API の `errors[].message`、対処方法を含める
 
 > [!NOTE]
 > 既存の [`nulab-backlog-mcp-server`](https://github.com/nulab/backlog-mcp-server) が公式で存在しますが、担当者をレポーターに変更するような複合操作は未対応の可能性があります。自前実装と公式MCPサーバーの併用も検討してください。

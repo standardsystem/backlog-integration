@@ -1,9 +1,9 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { dirname, basename } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import type { Entity } from 'backlog-js';
+import type { Entity, Option } from 'backlog-js';
 import type { BacklogApiClient } from './client.js';
 import type {
     ListIssuesOptions,
@@ -11,7 +11,26 @@ import type {
     UpdateIssueOptions,
     ListCommentsOptions,
     CreateIssueOptions,
+    DownloadedFile,
+    DownloadAttachmentsResult,
+    DownloadedAttachment,
 } from './types.js';
+import { sanitizeFileName, openUniqueFile } from './file-name.js';
+
+/**
+ * 課題更新で「値をすべて外す」意図の空配列を、Backlog が解除と解釈する形に変換する
+ *
+ * backlog-js は `qs.stringify(..., { arrayFormat: 'brackets' })` でクエリを組み立てるため、
+ * 空配列 `[]` は何も出力されず、その項目に触れなかったのと同じになります。
+ * 実 API で確認した結果、解除には空文字を 1 要素持つ配列（`milestoneId[]=`）が必要でした。
+ * 空文字そのもの（`milestoneId=`）は `error.unknownParameter` で拒否されます。
+ *
+ * @param values - 設定したいIDの配列
+ * @returns 値がある場合はそのまま、空配列の場合は解除を表す `['']`
+ */
+function toClearableArray(values: number[]): number[] | [''] {
+    return values.length > 0 ? values : [''];
+}
 
 /**
  * Backlog 課題操作モジュール
@@ -55,6 +74,58 @@ export class IssueService {
     }
 
     /**
+     * 課題検索の条件を Backlog API のクエリパラメータに変換する
+     *
+     * `listIssues` と `countIssues` で同じ絞込条件を使えるように共通化しています。
+     * `projectIdOrKey` は数値IDへ解決したうえで `projectId[]` に詰めます。
+     *
+     * @param options - 検索条件
+     * @returns Backlog API「課題一覧の取得」のパラメータ
+     */
+    private async buildIssueSearchParams(options: ListIssuesOptions): Promise<Option.Issue.GetIssuesParams> {
+        const params: Record<string, unknown> = {};
+
+        if (options.projectIdOrKey !== undefined) {
+            // プロジェクトキー（文字列）は数値IDに変換する（結果はクライアント側でキャッシュされる）
+            params.projectId = [await this.client.resolveProjectId(options.projectIdOrKey)];
+        }
+
+        // 配列で指定する絞込条件（空配列は API に送らない）
+        const arrayKeys = [
+            'id', 'parentIssueId', 'issueTypeId', 'categoryId', 'versionId', 'milestoneId',
+            'statusId', 'priorityId', 'resolutionId', 'assigneeId', 'createdUserId',
+        ] as const;
+        for (const key of arrayKeys) {
+            const value = options[key];
+            if (value !== undefined && value.length > 0) params[key] = value;
+        }
+
+        // 真偽値で指定する絞込条件（false にも意味があるため undefined 判定で分岐する）
+        const booleanKeys = ['attachment', 'sharedFile', 'hasDueDate'] as const;
+        for (const key of booleanKeys) {
+            if (options[key] !== undefined) params[key] = options[key];
+        }
+
+        // 日付範囲（YYYY-MM-DD）
+        const dateKeys = [
+            'createdSince', 'createdUntil', 'updatedSince', 'updatedUntil',
+            'startDateSince', 'startDateUntil', 'dueDateSince', 'dueDateUntil',
+        ] as const;
+        for (const key of dateKeys) {
+            if (options[key] !== undefined) params[key] = options[key];
+        }
+
+        if (options.parentChild !== undefined) params.parentChild = options.parentChild;
+        if (options.keyword !== undefined) params.keyword = options.keyword;
+        if (options.count !== undefined) params.count = options.count;
+        if (options.offset !== undefined) params.offset = options.offset;
+        if (options.sort !== undefined) params.sort = options.sort;
+        if (options.order !== undefined) params.order = options.order;
+
+        return params as Option.Issue.GetIssuesParams;
+    }
+
+    /**
      * 課題の一覧を取得する
      *
      * @param options - 検索条件
@@ -62,51 +133,25 @@ export class IssueService {
      */
     async listIssues(options: ListIssuesOptions = {}): Promise<Entity.Issue.Issue[]> {
         const backlog = this.client.getClient();
-        const params: Record<string, unknown> = {};
-
-        if (options.projectIdOrKey !== undefined) {
-            let projectId: number;
-            if (typeof options.projectIdOrKey === 'number') {
-                projectId = options.projectIdOrKey;
-            } else {
-                // プロジェクトキー（文字列）を数値IDに変換
-                const project = await backlog.getProject(options.projectIdOrKey);
-                projectId = (project as { id: number }).id;
-            }
-            params.projectId = [projectId];
-        }
-        if (options.statusId) {
-            params.statusId = options.statusId;
-        }
-        if (options.assigneeId) {
-            params.assigneeId = options.assigneeId;
-        }
-        if (options.createdUserId) {
-            params.createdUserId = options.createdUserId;
-        }
-        if (options.issueTypeId) {
-            params.issueTypeId = options.issueTypeId;
-        }
-        if (options.categoryId) {
-            params.categoryId = options.categoryId;
-        }
-        if (options.keyword) {
-            params.keyword = options.keyword;
-        }
-        if (options.count !== undefined) {
-            params.count = options.count;
-        }
-        if (options.offset !== undefined) {
-            params.offset = options.offset;
-        }
-        if (options.sort) {
-            params.sort = options.sort;
-        }
-        if (options.order) {
-            params.order = options.order;
-        }
-
+        const params = await this.buildIssueSearchParams(options);
         return await backlog.getIssues(params);
+    }
+
+    /**
+     * 課題の総件数を取得する
+     *
+     * `listIssues` と同じ絞込条件を受け取ります。`count` / `offset` / `sort` / `order` は
+     * 件数取得では意味を持たないため無視されます。ページングの終端判定に使います。
+     *
+     * @param options - 検索条件
+     * @returns 条件に一致する課題の総件数
+     */
+    async countIssues(options: ListIssuesOptions = {}): Promise<number> {
+        const backlog = this.client.getClient();
+        const { count: _count, offset: _offset, sort: _sort, order: _order, ...rest } = options;
+        const params = await this.buildIssueSearchParams(rest);
+        const result = await backlog.getIssuesCount(params);
+        return result.count;
     }
 
     /**
@@ -154,9 +199,11 @@ export class IssueService {
         // 担当者を未割り当てにする場合は空文字を設定する
         if (options.assigneeId !== undefined) params.assigneeId = options.assigneeId === null ? '' : options.assigneeId;
         if (options.issueTypeId !== undefined) params.issueTypeId = options.issueTypeId;
-        if (options.categoryId !== undefined) params.categoryId = options.categoryId;
-        if (options.versionId !== undefined) params.versionId = options.versionId;
-        if (options.milestoneId !== undefined) params.milestoneId = options.milestoneId;
+        // カテゴリ・発生バージョン・マイルストーンの解除は `xxxId[]=`（空文字を 1 要素持つ配列）で送る。
+        // 空配列のままだとクエリ文字列に何も出力されず「その項目に触れない」と同義になってしまう。
+        if (options.categoryId !== undefined) params.categoryId = toClearableArray(options.categoryId);
+        if (options.versionId !== undefined) params.versionId = toClearableArray(options.versionId);
+        if (options.milestoneId !== undefined) params.milestoneId = toClearableArray(options.milestoneId);
         if (options.priorityId !== undefined) params.priorityId = options.priorityId;
         if (options.startDate !== undefined) params.startDate = options.startDate;
         if (options.dueDate !== undefined) params.dueDate = options.dueDate;
@@ -233,28 +280,201 @@ export class IssueService {
     }
 
     /**
+     * 課題のコメント総件数を取得する
+     *
+     * `listComments` は最大 100 件までしか返さないため、ページングの終端判定に使います。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @returns コメントの総件数
+     */
+    async countComments(issueIdOrKey: string | number): Promise<number> {
+        const backlog = this.client.getClient();
+        const result = await backlog.getIssueCommentsCount(issueIdOrKey);
+        return result.count;
+    }
+
+    /**
+     * 課題コメントの本文を更新する
+     *
+     * Backlog API の仕様上、更新できるのは自分が投稿したコメントだけです。
+     * 他人のコメントを対象にすると権限エラー（HTTP 403）になります。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param commentId - コメントID
+     * @param content - 新しいコメント本文（全文置換）
+     * @returns 更新後のコメント
+     */
+    async updateComment(
+        issueIdOrKey: string | number,
+        commentId: number,
+        content: string,
+    ): Promise<Entity.Issue.Comment> {
+        const backlog = this.client.getClient();
+        return await backlog.patchIssueComment(issueIdOrKey, commentId, { content });
+    }
+
+    /**
+     * 課題コメントを削除する
+     *
+     * 削除は取り消せません。実行前に `getComment` で内容を確認してください。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param commentId - コメントID
+     * @returns 削除されたコメント
+     */
+    async deleteComment(
+        issueIdOrKey: string | number,
+        commentId: number,
+    ): Promise<Entity.Issue.Comment> {
+        const backlog = this.client.getClient();
+        return await backlog.deleteIssueComment(issueIdOrKey, commentId);
+    }
+
+    /**
+     * 直近のコメントから、指定した本文と一致するものを探す
+     *
+     * `updateIssue`（PATCH /issues/:idOrKey）に `comment` を渡した場合、レスポンスは課題本体で
+     * コメントIDを含みません。投稿直後にこのメソッドで引き当てることで、通知を二重に飛ばさずに
+     * コメントIDとURLを取得します。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param content - 探すコメント本文
+     * @param searchCount - 新しい順に何件まで遡って探すか（既定: 5）
+     * @returns 一致したコメント。見つからない場合は undefined
+     */
+    async findRecentCommentByContent(
+        issueIdOrKey: string | number,
+        content: string,
+        searchCount = 5,
+    ): Promise<Entity.Issue.Comment | undefined> {
+        const comments = await this.listComments(issueIdOrKey, { count: searchCount, order: 'desc' });
+        return comments.find((comment) => comment.content === content);
+    }
+
+    /**
      * 課題の添付ファイルをダウンロードしてローカルに保存する
      *
      * @param issueIdOrKey - 課題ID または 課題キー
      * @param attachmentId - 添付ファイルID
      * @param outputPath - 保存先の絶対パス
+     * @returns 保存先パスと書き出したバイト数
      */
     async downloadAttachment(
         issueIdOrKey: string | number,
         attachmentId: number,
         outputPath: string,
-    ): Promise<void> {
+    ): Promise<DownloadedFile> {
+        // 出力先ディレクトリの作成を先に済ませる。
+        // 逆順にすると mkdir が失敗したときにレスポンスのストリームが解放されず、
+        // 接続が GC まで残ってしまう。
+        await mkdir(dirname(outputPath), { recursive: true });
+
+        const body = await this.fetchAttachmentStream(issueIdOrKey, attachmentId);
+        const writeStream = createWriteStream(outputPath);
+        await pipeline(body, writeStream);
+
+        const { size } = await stat(outputPath);
+        return { path: outputPath, bytes: size };
+    }
+
+    /**
+     * 添付ファイルの本体を Node.js の読み取りストリームとして取得する
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param attachmentId - 添付ファイルID
+     * @returns ファイル内容の読み取りストリーム
+     */
+    private async fetchAttachmentStream(
+        issueIdOrKey: string | number,
+        attachmentId: number,
+    ): Promise<Readable> {
         const backlog = this.client.getClient();
         const fileData = await backlog.getIssueAttachment(issueIdOrKey, attachmentId);
 
         // Node.js 環境: body は Web ReadableStream（backlog-js 0.17 以降）なので Node.js ストリームに変換する
-        const body = Readable.fromWeb(fileData.body as ReadableStream);
+        return Readable.fromWeb(fileData.body as ReadableStream);
+    }
 
-        // 出力先ディレクトリが存在しない場合は作成
-        await mkdir(dirname(outputPath), { recursive: true });
+    /**
+     * 課題の添付ファイル一覧を取得する
+     *
+     * 課題全体を取得せずに添付だけ確認したいときに使います。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @returns 添付ファイル情報の配列
+     */
+    async listAttachments(issueIdOrKey: string | number): Promise<Entity.File.IssueFileInfo[]> {
+        const backlog = this.client.getClient();
+        return await backlog.getIssueAttachments(issueIdOrKey);
+    }
 
-        const writeStream = createWriteStream(outputPath);
-        await pipeline(body, writeStream);
+    /**
+     * 課題の添付ファイルをまとめてダウンロードする
+     *
+     * Backlog 上のファイル名で保存します。ローカルで使えない文字は `_` に置換し、
+     * 同名のファイルがある場合は `name (2).ext` のように連番を付けます。
+     * 出力先ディレクトリが無ければ作成します。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param outputDir - 保存先ディレクトリの絶対パス
+     * @param attachmentIds - ダウンロードする添付ファイルID（省略時は全件）
+     * @returns 保存したファイルの一覧
+     */
+    async downloadAttachments(
+        issueIdOrKey: string | number,
+        outputDir: string,
+        attachmentIds?: number[],
+    ): Promise<DownloadAttachmentsResult> {
+        const all = await this.listAttachments(issueIdOrKey);
+
+        let targets = all;
+        // 空配列は「全件」とみなす（「0 件指定」と解釈すると、添付があるのに
+        // 何も保存されないまま成功扱いになり、呼び出し側が添付なしと誤認する）
+        if (attachmentIds !== undefined && attachmentIds.length > 0) {
+            const wanted = new Set(attachmentIds);
+            targets = all.filter((attachment) => wanted.has(attachment.id));
+
+            const missing = attachmentIds.filter(
+                (id) => !all.some((attachment) => attachment.id === id),
+            );
+            if (missing.length > 0) {
+                throw new Error(
+                    `課題 ${issueIdOrKey} に添付ファイルID ${missing.join(', ')} が見つかりません。`
+                    + `（この課題の添付ファイルID: ${all.map((a) => a.id).join(', ') || 'なし'}）`,
+                );
+            }
+        }
+
+        await mkdir(outputDir, { recursive: true });
+
+        const files: DownloadedAttachment[] = [];
+
+        for (const attachment of targets) {
+            const fileName = sanitizeFileName(attachment.name);
+            const { path: outputPath, handle } = await openUniqueFile(outputDir, fileName);
+
+            try {
+                const body = await this.fetchAttachmentStream(issueIdOrKey, attachment.id);
+                // createWriteStream はストリーム終了時にハンドルを閉じる
+                await pipeline(body, handle.createWriteStream());
+            } catch (error) {
+                // 途中で失敗した場合、確保した空ファイルを残さない
+                await handle.close().catch(() => undefined);
+                await rm(outputPath, { force: true });
+                throw error;
+            }
+
+            const { size } = await stat(outputPath);
+            files.push({
+                id: attachment.id,
+                name: attachment.name,
+                size: attachment.size,
+                path: outputPath,
+                bytes: size,
+            });
+        }
+
+        return { count: files.length, outputDir, files };
     }
 
     /**

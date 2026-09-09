@@ -1,13 +1,14 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IssueService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
 
 /**
  * delete_issue_attachment ツールを登録する
  *
  * 課題に添付されたファイルを削除します。
  */
-export function registerDeleteIssueAttachmentTool(server: McpServer, issueService: IssueService) {
+export function registerDeleteIssueAttachmentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'delete_issue_attachment',
         {
@@ -19,26 +20,14 @@ export function registerDeleteIssueAttachmentTool(server: McpServer, issueServic
         },
         async ({ issueIdOrKey, attachmentId }) => {
             try {
-                const result = await issueService.deleteAttachment(issueIdOrKey, attachmentId);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `添付ファイル（ID: ${attachmentId}）を削除しました。\n${JSON.stringify(result, null, 2)}`,
-                        },
-                    ],
-                };
+                const result = await ctx.issues.deleteAttachment(issueIdOrKey, attachmentId);
+                return jsonResult({
+                    ...result,
+                    deleted: true,
+                    message: `添付ファイル（ID: ${attachmentId}）を削除しました。`,
+                });
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `課題添付ファイルの削除に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('課題添付ファイルの削除に失敗しました', error);
             }
         }
     );
