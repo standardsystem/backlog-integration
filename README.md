@@ -82,6 +82,17 @@ BACKLOG_API_KEY=your-api-key
 - `download_attachment` - 課題の添付ファイルをダウンロード
 - `delete_issue_attachment` - 課題の添付ファイルを削除
 
+プロジェクトのメタ情報（すべて読み取り専用）:
+
+- `get_project` - プロジェクトの詳細（数値ID・本文の記法）を取得
+- `list_project_users` - プロジェクト参加ユーザーの一覧を取得（担当者IDの引き当て）
+- `list_milestones` - マイルストーン（バージョン）一覧を取得
+- `list_statuses` - 状態一覧を取得（カスタムステータスを含む）
+- `list_issue_types` - 課題種別一覧を取得
+- `list_categories` - カテゴリ一覧を取得
+- `list_priorities` - 優先度一覧を取得
+- `get_myself` - 接続中アカウントの情報を取得
+
 ドキュメント:
 
 - `get_document` - ドキュメントの詳細を取得

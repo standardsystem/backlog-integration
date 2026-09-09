@@ -21,6 +21,7 @@
 export { BacklogApiClient } from './client.js';
 export { IssueService } from './issues.js';
 export { DocumentService } from './documents.js';
+export { ProjectService } from './projects.js';
 export type {
     BacklogClientConfig,
     BacklogDomain,

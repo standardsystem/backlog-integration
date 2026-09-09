@@ -15,7 +15,12 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { BacklogApiClient, IssueService, DocumentService } from '@backlog-integration/backlog-client';
+import {
+    BacklogApiClient,
+    IssueService,
+    DocumentService,
+    ProjectService,
+} from '@backlog-integration/backlog-client';
 
 import type { ToolContext } from './lib/context.js';
 import { registerGetIssueTool } from './tools/get-issue.js';
@@ -38,6 +43,14 @@ import { registerDownloadDocumentMarkdownTool } from './tools/download-document-
 import { registerUploadDocumentMarkdownTool } from './tools/upload-document-markdown.js';
 import { registerDeleteIssueAttachmentTool } from './tools/delete-issue-attachment.js';
 import { registerDeleteDocumentAttachmentTool } from './tools/delete-document-attachment.js';
+import { registerGetProjectTool } from './tools/get-project.js';
+import { registerListProjectUsersTool } from './tools/list-project-users.js';
+import { registerListMilestonesTool } from './tools/list-milestones.js';
+import { registerListStatusesTool } from './tools/list-statuses.js';
+import { registerListIssueTypesTool } from './tools/list-issue-types.js';
+import { registerListCategoriesTool } from './tools/list-categories.js';
+import { registerListPrioritiesTool } from './tools/list-priorities.js';
+import { registerGetMyselfTool } from './tools/get-myself.js';
 
 async function main() {
     // 環境変数の検証
@@ -58,6 +71,7 @@ async function main() {
         api: apiClient,
         issues: new IssueService(apiClient),
         documents: new DocumentService(apiClient),
+        projects: new ProjectService(apiClient),
     };
 
     // MCPサーバーの作成
@@ -79,6 +93,16 @@ async function main() {
     registerCreateIssueTool(server, ctx);
     registerUploadAttachmentTool(server, ctx);
     registerDeleteIssueAttachmentTool(server, ctx);
+
+    // ツールの登録（プロジェクトのメタ情報・自分自身）
+    registerGetProjectTool(server, ctx);
+    registerListProjectUsersTool(server, ctx);
+    registerListMilestonesTool(server, ctx);
+    registerListStatusesTool(server, ctx);
+    registerListIssueTypesTool(server, ctx);
+    registerListCategoriesTool(server, ctx);
+    registerListPrioritiesTool(server, ctx);
+    registerGetMyselfTool(server, ctx);
 
     // ツールの登録（ドキュメント）
     registerGetDocumentTool(server, ctx);
