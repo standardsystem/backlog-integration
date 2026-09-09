@@ -12,7 +12,10 @@ import type {
     ListCommentsOptions,
     CreateIssueOptions,
     DownloadedFile,
+    DownloadAttachmentsResult,
+    DownloadedAttachment,
 } from './types.js';
+import { sanitizeFileName, buildUniqueFilePath } from './file-name.js';
 
 /**
  * Backlog 課題操作モジュール
@@ -358,6 +361,77 @@ export class IssueService {
 
         const { size } = await stat(outputPath);
         return { path: outputPath, bytes: size };
+    }
+
+    /**
+     * 課題の添付ファイル一覧を取得する
+     *
+     * 課題全体を取得せずに添付だけ確認したいときに使います。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @returns 添付ファイル情報の配列
+     */
+    async listAttachments(issueIdOrKey: string | number): Promise<Entity.File.IssueFileInfo[]> {
+        const backlog = this.client.getClient();
+        return await backlog.getIssueAttachments(issueIdOrKey);
+    }
+
+    /**
+     * 課題の添付ファイルをまとめてダウンロードする
+     *
+     * Backlog 上のファイル名で保存します。ローカルで使えない文字は `_` に置換し、
+     * 同名のファイルがある場合は `name (2).ext` のように連番を付けます。
+     * 出力先ディレクトリが無ければ作成します。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param outputDir - 保存先ディレクトリの絶対パス
+     * @param attachmentIds - ダウンロードする添付ファイルID（省略時は全件）
+     * @returns 保存したファイルの一覧
+     */
+    async downloadAttachments(
+        issueIdOrKey: string | number,
+        outputDir: string,
+        attachmentIds?: number[],
+    ): Promise<DownloadAttachmentsResult> {
+        const all = await this.listAttachments(issueIdOrKey);
+
+        let targets = all;
+        if (attachmentIds !== undefined) {
+            const wanted = new Set(attachmentIds);
+            targets = all.filter((attachment) => wanted.has(attachment.id));
+
+            const missing = attachmentIds.filter(
+                (id) => !all.some((attachment) => attachment.id === id),
+            );
+            if (missing.length > 0) {
+                throw new Error(
+                    `課題 ${issueIdOrKey} に添付ファイルID ${missing.join(', ')} が見つかりません。`
+                    + `（この課題の添付ファイルID: ${all.map((a) => a.id).join(', ') || 'なし'}）`,
+                );
+            }
+        }
+
+        await mkdir(outputDir, { recursive: true });
+
+        // 同一呼び出し内で確保済みのパス（大文字小文字を区別しない Windows に合わせて小文字で保持）
+        const taken = new Set<string>();
+        const files: DownloadedAttachment[] = [];
+
+        for (const attachment of targets) {
+            const fileName = sanitizeFileName(attachment.name);
+            const outputPath = await buildUniqueFilePath(outputDir, fileName, taken);
+            const saved = await this.downloadAttachment(issueIdOrKey, attachment.id, outputPath);
+
+            files.push({
+                id: attachment.id,
+                name: attachment.name,
+                size: attachment.size,
+                path: saved.path,
+                bytes: saved.bytes,
+            });
+        }
+
+        return { count: files.length, outputDir, files };
     }
 
     /**

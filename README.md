@@ -89,9 +89,15 @@ BACKLOG_API_KEY=your-api-key
 - `update_comment` - 自分のコメントを更新（全文置換）
 - `delete_comment` - 自分のコメントを削除（取り消し不可）
 - `assign_to_reporter` - 担当者をレポーターに変更
-- `mcp_backlog_upload_attachment` - ローカルファイルを添付ファイルとしてアップロード
-- `download_attachment` - 課題の添付ファイルをダウンロード
+- `upload_attachment` - ローカルファイルを添付ファイルとしてアップロード
+- `list_issue_attachments` - 課題の添付ファイル一覧を取得
+- `download_attachment` - 課題の添付ファイルを1件ダウンロード
+- `download_issue_attachments` - 課題の添付ファイルを一括ダウンロード
 - `delete_issue_attachment` - 課題の添付ファイルを削除
+
+> `mcp_backlog_upload_attachment` は `upload_attachment` に改名しました。
+> 旧名も 1 リリースだけ残していますが非推奨です。MCP クライアントの許可リストを
+> `upload_attachment` に切り替えてください。
 
 プロジェクトのメタ情報（すべて読み取り専用）:
 

@@ -43,6 +43,8 @@ import { registerDownloadDocumentMarkdownTool } from './tools/download-document-
 import { registerUploadDocumentMarkdownTool } from './tools/upload-document-markdown.js';
 import { registerDeleteIssueAttachmentTool } from './tools/delete-issue-attachment.js';
 import { registerDeleteDocumentAttachmentTool } from './tools/delete-document-attachment.js';
+import { registerDownloadIssueAttachmentsTool } from './tools/download-issue-attachments.js';
+import { registerListIssueAttachmentsTool } from './tools/list-issue-attachments.js';
 import { registerUpdateCommentTool } from './tools/update-comment.js';
 import { registerDeleteCommentTool } from './tools/delete-comment.js';
 import { registerCountCommentsTool } from './tools/count-comments.js';
@@ -91,6 +93,8 @@ async function main() {
     registerAssignToReporterTool(server, ctx);
     registerUpdateIssueTool(server, ctx);
     registerDownloadAttachmentTool(server, ctx);
+    registerDownloadIssueAttachmentsTool(server, ctx);
+    registerListIssueAttachmentsTool(server, ctx);
     registerGetCommentTool(server, ctx);
     registerListCommentsTool(server, ctx);
     registerUpdateCommentTool(server, ctx);

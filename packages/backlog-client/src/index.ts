@@ -22,6 +22,7 @@ export { BacklogApiClient } from './client.js';
 export { IssueService } from './issues.js';
 export { DocumentService } from './documents.js';
 export { ProjectService } from './projects.js';
+export { sanitizeFileName, splitFileName, buildUniqueFilePath } from './file-name.js';
 export type {
     BacklogClientConfig,
     BacklogDomain,
@@ -29,6 +30,8 @@ export type {
     IssueParentChild,
     ListIssuesOptions,
     DownloadedFile,
+    DownloadedAttachment,
+    DownloadAttachmentsResult,
     AddCommentOptions,
     UpdateIssueOptions,
     ListCommentsOptions,

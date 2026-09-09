@@ -113,6 +113,34 @@ export interface DownloadedFile {
 }
 
 /**
+ * 一括ダウンロードした添付ファイル 1 件の情報
+ */
+export interface DownloadedAttachment {
+    /** 添付ファイルID */
+    id: number;
+    /** Backlog 上のファイル名 */
+    name: string;
+    /** Backlog 上のファイルサイズ（バイト） */
+    size: number;
+    /** 保存先の絶対パス（ファイル名を正規化・連番付与した結果） */
+    path: string;
+    /** 実際に書き出したバイト数 */
+    bytes: number;
+}
+
+/**
+ * 添付ファイル一括ダウンロードの結果
+ */
+export interface DownloadAttachmentsResult {
+    /** 保存したファイル数 */
+    count: number;
+    /** 保存先ディレクトリ */
+    outputDir: string;
+    /** 保存したファイルの一覧 */
+    files: DownloadedAttachment[];
+}
+
+/**
  * コメント追加のオプション
  */
 export interface AddCommentOptions {
