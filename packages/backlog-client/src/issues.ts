@@ -260,6 +260,57 @@ export class IssueService {
     }
 
     /**
+     * 課題のコメント総件数を取得する
+     *
+     * `listComments` は最大 100 件までしか返さないため、ページングの終端判定に使います。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @returns コメントの総件数
+     */
+    async countComments(issueIdOrKey: string | number): Promise<number> {
+        const backlog = this.client.getClient();
+        const result = await backlog.getIssueCommentsCount(issueIdOrKey);
+        return result.count;
+    }
+
+    /**
+     * 課題コメントの本文を更新する
+     *
+     * Backlog API の仕様上、更新できるのは自分が投稿したコメントだけです。
+     * 他人のコメントを対象にすると権限エラー（HTTP 403）になります。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param commentId - コメントID
+     * @param content - 新しいコメント本文（全文置換）
+     * @returns 更新後のコメント
+     */
+    async updateComment(
+        issueIdOrKey: string | number,
+        commentId: number,
+        content: string,
+    ): Promise<Entity.Issue.Comment> {
+        const backlog = this.client.getClient();
+        return await backlog.patchIssueComment(issueIdOrKey, commentId, { content });
+    }
+
+    /**
+     * 課題コメントを削除する
+     *
+     * 削除は取り消せません。実行前に `getComment` で内容を確認してください。
+     *
+     * @param issueIdOrKey - 課題ID または 課題キー
+     * @param commentId - コメントID
+     * @returns 削除されたコメント
+     */
+    async deleteComment(
+        issueIdOrKey: string | number,
+        commentId: number,
+    ): Promise<Entity.Issue.Comment> {
+        const backlog = this.client.getClient();
+        return await backlog.deleteIssueComment(issueIdOrKey, commentId);
+    }
+
+    /**
      * 直近のコメントから、指定した本文と一致するものを探す
      *
      * `updateIssue`（PATCH /issues/:idOrKey）に `comment` を渡した場合、レスポンスは課題本体で

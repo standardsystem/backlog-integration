@@ -85,6 +85,9 @@ BACKLOG_API_KEY=your-api-key
 - `add_comment` - コメントを追加
 - `get_comment` - コメントを取得
 - `list_comments` - コメント一覧を取得
+- `count_comments` - コメント総件数を取得
+- `update_comment` - 自分のコメントを更新（全文置換）
+- `delete_comment` - 自分のコメントを削除（取り消し不可）
 - `assign_to_reporter` - 担当者をレポーターに変更
 - `mcp_backlog_upload_attachment` - ローカルファイルを添付ファイルとしてアップロード
 - `download_attachment` - 課題の添付ファイルをダウンロード

@@ -43,6 +43,9 @@ import { registerDownloadDocumentMarkdownTool } from './tools/download-document-
 import { registerUploadDocumentMarkdownTool } from './tools/upload-document-markdown.js';
 import { registerDeleteIssueAttachmentTool } from './tools/delete-issue-attachment.js';
 import { registerDeleteDocumentAttachmentTool } from './tools/delete-document-attachment.js';
+import { registerUpdateCommentTool } from './tools/update-comment.js';
+import { registerDeleteCommentTool } from './tools/delete-comment.js';
+import { registerCountCommentsTool } from './tools/count-comments.js';
 import { registerGetProjectTool } from './tools/get-project.js';
 import { registerListProjectUsersTool } from './tools/list-project-users.js';
 import { registerListMilestonesTool } from './tools/list-milestones.js';
@@ -90,6 +93,9 @@ async function main() {
     registerDownloadAttachmentTool(server, ctx);
     registerGetCommentTool(server, ctx);
     registerListCommentsTool(server, ctx);
+    registerUpdateCommentTool(server, ctx);
+    registerDeleteCommentTool(server, ctx);
+    registerCountCommentsTool(server, ctx);
     registerCreateIssueTool(server, ctx);
     registerUploadAttachmentTool(server, ctx);
     registerDeleteIssueAttachmentTool(server, ctx);
