@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { DocumentService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
 
 /**
  * add_document ツールを登録する
@@ -8,7 +9,7 @@ import type { DocumentService } from '@backlog-integration/backlog-client';
  * 新しいドキュメントを作成します。本文はインライン文字列で指定します。
  * ローカルの Markdown ファイルから作成したい場合は upload_document_markdown を使用してください。
  */
-export function registerAddDocumentTool(server: McpServer, documentService: DocumentService) {
+export function registerAddDocumentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'add_document',
         {
@@ -24,26 +25,10 @@ export function registerAddDocumentTool(server: McpServer, documentService: Docu
         },
         async (params) => {
             try {
-                const doc = await documentService.addDocument(params);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: JSON.stringify(doc, null, 2),
-                        },
-                    ],
-                };
+                const doc = await ctx.documents.addDocument(params);
+                return jsonResult(doc);
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `ドキュメントの作成に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('ドキュメントの作成に失敗しました', error);
             }
         }
     );

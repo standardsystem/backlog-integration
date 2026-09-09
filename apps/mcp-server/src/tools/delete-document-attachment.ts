@@ -1,13 +1,14 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { DocumentService } from '@backlog-integration/backlog-client';
+import type { ToolContext } from '../lib/context.js';
+import { jsonResult, errorResult } from '../lib/tool-result.js';
 
 /**
  * delete_document_attachment ツールを登録する
  *
  * ドキュメントに添付されたファイルを削除します。
  */
-export function registerDeleteDocumentAttachmentTool(server: McpServer, documentService: DocumentService) {
+export function registerDeleteDocumentAttachmentTool(server: McpServer, ctx: ToolContext) {
     server.registerTool(
         'delete_document_attachment',
         {
@@ -19,26 +20,15 @@ export function registerDeleteDocumentAttachmentTool(server: McpServer, document
         },
         async ({ documentId, attachmentId }) => {
             try {
-                const result = await documentService.deleteAttachment(documentId, attachmentId);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `添付ファイル（ID: ${attachmentId}）を削除しました。\n${JSON.stringify(result, null, 2)}`,
-                        },
-                    ],
-                };
+                const result = await ctx.documents.deleteAttachment(documentId, attachmentId);
+                return jsonResult({
+                    result,
+                    documentId,
+                    deleted: true,
+                    message: `添付ファイル（ID: ${attachmentId}）を削除しました。`,
+                });
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: `ドキュメント添付ファイルの削除に失敗しました: ${message}`,
-                        },
-                    ],
-                    isError: true,
-                };
+                return errorResult('ドキュメント添付ファイルの削除に失敗しました', error);
             }
         }
     );
