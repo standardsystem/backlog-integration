@@ -90,7 +90,7 @@ function makeContext() {
     };
 
     const issues = {
-        getIssue: async () => ISSUE,
+        getIssue: async () => { calls.push('getIssue'); return ISSUE; },
         listIssues: async (o: Record<string, unknown>) => { calls.push(`listIssues:${JSON.stringify(o.parentIssueId ?? null)}`); return [ISSUE, ISSUE_NO_META]; },
         countIssues: async () => 253,
         addComment: async (_k: string, o: { content: string }) => ({ id: 555, content: o.content, created: '2026-09-09T10:00:00Z', createdUser: MYSELF, changeLog: [] }),
@@ -208,6 +208,18 @@ describe('add_comment', () => {
         const result = await s.call('add_comment', { issueIdOrKey: 'PROJ-12', content: '状態も変更', statusId: 3 });
         assert.equal(result.json.id, 777);
         assert.equal(result.json.url, 'https://my-space.backlog.jp/view/PROJ-12#comment-777');
+    });
+
+    test('担当者だけ変える場合は statusId を送らない（他者の状態変更を巻き戻さない）', async () => {
+        const { ctx, captured, calls } = makeContext();
+        const s = new FakeMcpServer();
+        registerAddCommentTool(s.server, ctx);
+
+        await s.call('add_comment', { issueIdOrKey: 'PROJ-12', content: 'x', assigneeId: 5 });
+
+        assert.equal(captured.update?.statusId, undefined, 'statusId を渡さないこと');
+        assert.equal(captured.update?.assigneeId, 5);
+        assert.ok(!calls.includes('getIssue'), '現在の状態を読みに行かないこと');
     });
 
     test('コメントを引き当てられない場合は message で知らせる', async () => {
@@ -342,6 +354,27 @@ describe('update_issue', () => {
         await s.call('update_issue', { issueIdOrKey: 'PROJ-12', milestoneId: [], categoryId: [] });
         assert.deepEqual(captured.update?.milestoneId, []);
         assert.deepEqual(captured.update?.categoryId, []);
+    });
+
+    test('状態を指定しなければ statusId を送らない（他者の状態変更を巻き戻さない）', async () => {
+        // 現在の状態を読んで送り返すと、GET と PATCH の間の他者の変更を打ち消してしまう
+        const { ctx, captured, calls } = makeContext();
+        const s = new FakeMcpServer();
+        registerUpdateIssueTool(s.server, ctx);
+
+        await s.call('update_issue', { issueIdOrKey: 'PROJ-12', dueDate: '2026-12-31' });
+
+        assert.equal(captured.update?.statusId, undefined, 'statusId を渡さないこと');
+        assert.ok(!calls.includes('getIssue'), '現在の状態を読みに行かないこと');
+    });
+
+    test('状態を指定したときだけ statusId を送る', async () => {
+        const { ctx, captured } = makeContext();
+        const s = new FakeMcpServer();
+        registerUpdateIssueTool(s.server, ctx);
+
+        await s.call('update_issue', { issueIdOrKey: 'PROJ-12', statusId: 2 });
+        assert.equal(captured.update?.statusId, 2);
     });
 
     test('返却に url / message / warnings を含む', async () => {

@@ -96,6 +96,10 @@ MCP サーバーは起動時に `GET /users/myself` で疎通を確認します�
 - `update_issue` の `milestoneId` / `categoryId` / `versionId` に空配列 `[]` を渡すと、
   その項目を解除します（Backlog API は `milestoneId[]=` の形でのみ解除を受け付けるため、
   クライアント側で変換しています）
+- `update_issue` / `add_comment` は、状態を明示したときだけ `statusId` を送ります。
+  現在の状態を読んで送り返すと、その 2 回の API 呼び出しの間に他の担当者が状態を変えていた場合に
+  その変更を黙って元に戻してしまうためです
+- Backlog は変更内容が 1 つも無い更新を `HTTP 400 No comment content.` で拒否します
 
 提供ツール:
 

@@ -55,19 +55,14 @@ export function registerAddCommentTool(server: McpServer, ctx: ToolContext) {
                 let commentLookupFailed = false;
 
                 if (assigneeId !== undefined || statusId !== undefined) {
-                    // updateIssue には現状のステータスIDが必要な場合があるため、statusIdが未指定の場合は取得する
-                    let resolvedStatusId = statusId ?? undefined;
-                    if (resolvedStatusId === undefined) {
-                        const currentIssue = await ctx.issues.getIssue(issueIdOrKey);
-                        resolvedStatusId = (currentIssue as { status?: { id?: number } }).status?.id;
-                    }
-
+                    // 状態は明示されたときだけ送る。現在の状態を読んで送り返すと、
+                    // その間に他の担当者が状態を変えていた場合に黙って元に戻してしまう。
                     const updatedIssue = await ctx.issues.updateIssue(issueIdOrKey, {
                         comment: content,
                         notifiedUserId: notifiedUserId ?? undefined,
                         attachmentId: combinedAttachmentIds.length > 0 ? combinedAttachmentIds : undefined,
                         assigneeId: assigneeId,
-                        statusId: resolvedStatusId,
+                        statusId,
                     });
                     issueKey = (updatedIssue as { issueKey?: string }).issueKey;
 

@@ -82,8 +82,7 @@ export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
                     }
                 }
 
-                // 課題の詳細は「statusId の自動補完」と「名前解決に使うプロジェクトの特定」で必要になる。
-                // どちらの用途でも 1 回だけ取得する。
+                // 課題キーから読み取れない場合に、名前解決用のプロジェクトを特定するために使う
                 let currentIssue: unknown;
                 const loadCurrentIssue = async (): Promise<unknown> => {
                     currentIssue ??= await ctx.issues.getIssue(params.issueIdOrKey);
@@ -130,22 +129,20 @@ export function registerUpdateIssueTool(server: McpServer, ctx: ToolContext) {
                         ? await ctx.resolver.resolveAssignee(await projectRef(), params.assignee)
                         : undefined);
 
-                // statusId が省略された場合、現在のステータスIDを自動付与
-                // Backlog API は patchIssue 時に statusId を必須とするため
-                let resolvedStatusId = params.statusId
+                // 状態は明示されたときだけ送る。
+                // 現在の状態を読んで送り返すと、その 2 つの API 呼び出しの間に他の担当者が
+                // 状態を変えていた場合、その変更を黙って元に戻してしまう。
+                // Backlog の PATCH /issues は statusId を必須としない（実 API で確認済み）。
+                const statusId = params.statusId
                     ?? (params.status !== undefined
                         ? await ctx.resolver.resolveStatus(await projectRef(), params.status)
                         : undefined);
-                if (resolvedStatusId === undefined) {
-                    const issue = await loadCurrentIssue() as { status?: { id?: number } };
-                    resolvedStatusId = issue.status?.id;
-                }
 
                 const updatedIssue = await ctx.issues.updateIssue(params.issueIdOrKey, {
                     summary: params.summary ?? undefined,
                     parentIssueId: params.parentIssueId,
                     description: params.description ?? undefined,
-                    statusId: resolvedStatusId,
+                    statusId,
                     assigneeId,
                     issueTypeId,
                     categoryId,

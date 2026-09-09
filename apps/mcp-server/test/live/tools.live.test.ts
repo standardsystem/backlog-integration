@@ -266,6 +266,52 @@ describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
         );
     });
 
+    // 「読み取りと更新の間に他者が状態を変えたら巻き戻す」という競合そのものは、
+    // MCP の外からは割り込めないため tools.test.ts の
+    // 「状態を指定しなければ statusId を送らない」で決定的に検証している。
+    // ここでは、状態に触れない更新が実 API 越しでも状態を変えないことを確かめる。
+    test('状態に触れない update_issue は他者が設定した状態を変えない', async () => {
+        const issue = await createIssue({ summary: '[自動テスト] 状態の維持確認' });
+        assert.equal(issue.status.id, 1, '前提: 未対応で作られること');
+
+        // 別の担当者が状態を変えた状況を、直接 API で再現する
+        await api.getClient().patchIssue(issue.issueKey, { statusId: 2 });
+
+        const updated = await client.call('update_issue', {
+            issueIdOrKey: issue.issueKey,
+            dueDate: '2030-06-30',
+        });
+
+        assert.equal(updated.isError, false, updated.text);
+        assert.equal(updated.json.status.id, 2, '他者が設定した状態（処理中）が保たれること');
+        assert.equal(updated.json.status.name, '処理中');
+    });
+
+    test('変更内容が無い update_issue は Backlog のエラーをそのまま伝える', async () => {
+        // Backlog は変更が 1 つも無い PATCH を 400 (No comment content.) で拒否する
+        const issue = await createIssue({ summary: '[自動テスト] 変更なしの更新' });
+        const result = await client.call('update_issue', { issueIdOrKey: issue.issueKey });
+
+        assert.equal(result.isError, true);
+        assert.match(result.text, /HTTP 400/);
+        assert.match(result.text, /No comment content/);
+    });
+
+    test('状態に触れない add_comment（担当者変更つき）は状態を変えない', async () => {
+        const issue = await createIssue({ summary: '[自動テスト] コメントでの状態維持確認' });
+        await api.getClient().patchIssue(issue.issueKey, { statusId: 2 });
+
+        const result = await client.call('add_comment', {
+            issueIdOrKey: issue.issueKey,
+            content: '担当者だけ変更します',
+            assigneeId: (await projects.getMyself()).id,
+        });
+
+        assert.equal(result.isError, false, result.text);
+        const after = await client.call('get_issue', { issueIdOrKey: issue.issueKey });
+        assert.equal(after.json.status.id, 2, '状態が保たれること');
+    });
+
     test('add_comment が状態変更と同時でもコメントIDと url を返す', async () => {
         const issue = await createIssue({ summary: '[自動テスト] コメント（MCP）' });
 
