@@ -22,6 +22,7 @@ export { BacklogApiClient } from './client.js';
 export { IssueService } from './issues.js';
 export { DocumentService } from './documents.js';
 export { ProjectService } from './projects.js';
+export { WikiService } from './wikis.js';
 export { sanitizeFileName, splitFileName, openUniqueFile } from './file-name.js';
 export { resolveBacklogConfig, parseSpaceId } from './config.js';
 export { describeBacklogError, formatBacklogError } from './errors.js';
@@ -42,4 +43,6 @@ export type {
     ListDocumentsOptions,
     AddDocumentOptions,
     UploadDocumentMarkdownOptions,
+    AddWikiOptions,
+    UpdateWikiOptions,
 } from './types.js';

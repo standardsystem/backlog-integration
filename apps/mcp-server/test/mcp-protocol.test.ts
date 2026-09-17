@@ -124,6 +124,7 @@ describe('MCP プロトコル越しの動作', () => {
             'get_document', 'list_documents', 'get_document_tree', 'add_document',
             'upload_document_markdown', 'download_document_markdown', 'download_document_attachment',
             'delete_document_attachment',
+            'get_wiki', 'list_wikis', 'count_wikis', 'add_wiki', 'update_wiki', 'download_wiki_content',
         ]) {
             assert.ok(names.includes(expected), `${expected} が登録されていること`);
         }

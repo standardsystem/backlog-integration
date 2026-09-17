@@ -3,6 +3,7 @@ import type {
     IssueService,
     DocumentService,
     ProjectService,
+    WikiService,
 } from '@backlog-integration/backlog-client';
 import type { IssueFieldResolver } from './field-resolver.js';
 
@@ -21,6 +22,8 @@ export interface ToolContext {
     documents: DocumentService;
     /** プロジェクトのメタ情報参照サービス */
     projects: ProjectService;
+    /** Wiki 操作サービス */
+    wikis: WikiService;
     /** 課題の項目を名前から ID に解決するリゾルバ（プロセス内キャッシュ付き） */
     resolver: IssueFieldResolver;
 }

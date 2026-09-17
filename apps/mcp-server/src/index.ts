@@ -24,6 +24,7 @@ import {
     IssueService,
     DocumentService,
     ProjectService,
+    WikiService,
     resolveBacklogConfig,
 } from '@backlog-integration/backlog-client';
 
@@ -63,6 +64,12 @@ import { registerListIssueTypesTool } from './tools/list-issue-types.js';
 import { registerListCategoriesTool } from './tools/list-categories.js';
 import { registerListPrioritiesTool } from './tools/list-priorities.js';
 import { registerGetMyselfTool } from './tools/get-myself.js';
+import { registerGetWikiTool } from './tools/get-wiki.js';
+import { registerListWikisTool } from './tools/list-wikis.js';
+import { registerCountWikisTool } from './tools/count-wikis.js';
+import { registerAddWikiTool } from './tools/add-wiki.js';
+import { registerUpdateWikiTool } from './tools/update-wiki.js';
+import { registerDownloadWikiContentTool } from './tools/download-wiki-content.js';
 
 /**
  * 起動時に Backlog への疎通を確認する
@@ -123,6 +130,7 @@ async function main() {
         issues: new IssueService(apiClient),
         documents: new DocumentService(apiClient),
         projects: projectService,
+        wikis: new WikiService(apiClient),
         resolver: new IssueFieldResolver(projectService),
     };
 
@@ -173,6 +181,14 @@ async function main() {
     registerDownloadDocumentMarkdownTool(server, ctx);
     registerUploadDocumentMarkdownTool(server, ctx);
     registerDeleteDocumentAttachmentTool(server, ctx);
+
+    // ツールの登録（Wiki）
+    registerGetWikiTool(server, ctx);
+    registerListWikisTool(server, ctx);
+    registerCountWikisTool(server, ctx);
+    registerAddWikiTool(server, ctx);
+    registerUpdateWikiTool(server, ctx);
+    registerDownloadWikiContentTool(server, ctx);
 
     // Stdioトランスポートで起動
     const transport = new StdioServerTransport();

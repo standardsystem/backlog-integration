@@ -106,6 +106,20 @@ export class BacklogApiClient {
     }
 
     /**
+     * Wiki ページのWeb URLを組み立てる
+     *
+     * ページ名から組み立てる URL（/wiki/PROJECT/ページ名）はページ名の変更で変わるため、
+     * ID で引ける /alias/wiki/{id} 形式を使います。
+     *
+     * @param wikiId - Wiki ページID
+     * @returns Wiki ページのURL。wikiId が未指定の場合は undefined
+     */
+    getWikiUrl(wikiId: number | undefined | null): string | undefined {
+        if (wikiId === undefined || wikiId === null) return undefined;
+        return `${this.getBaseUrl()}/alias/wiki/${wikiId}`;
+    }
+
+    /**
      * プロジェクトキー（文字列）を数値のプロジェクトIDに解決する
      *
      * 数値または数値形式の文字列はそのまま返します。

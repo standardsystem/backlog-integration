@@ -149,6 +149,20 @@ MCP サーバーは起動時に `GET /users/myself` で疎通を確認します�
 - `download_document_attachment` - ドキュメントの添付ファイルをダウンロード
 - `delete_document_attachment` - ドキュメントの添付ファイルを削除
 
+Wiki:
+
+- `get_wiki` - Wiki ページの詳細（本文を含む）を取得
+- `list_wikis` - Wiki ページ一覧を取得（本文なし、キーワードで絞込）
+- `count_wikis` - Wiki ページ数を取得
+- `add_wiki` - Wiki ページを作成（本文は文字列またはローカルファイルで指定）
+- `update_wiki` - Wiki ページのページ名・本文を更新（本文は全文置換）
+- `download_wiki_content` - Wiki ページの本文をローカルファイルに保存
+
+> `update_wiki` に取得時の `updated` を `expectedUpdated` として渡すと、読み込み後に他者が
+> 編集していた場合は上書きせずにエラーになります。Backlog API には競合検知が無いため、
+> 本文を書き換えるときは指定してください（未指定で本文を更新すると `warnings` に載せます）。
+> Wiki の `url` はページ名の変更で変わらない `/alias/wiki/{id}` 形式です。
+
 ### CLIツール
 
 ```bash
@@ -190,7 +204,7 @@ pnpm --filter @backlog-integration/mcp-server test
 | 種類 | 場所 | 内容 |
 | :--- | :--- | :--- |
 | ユニット・結合 | `test/*.test.ts` | ネットワークに出ない。ファイル名の正規化、検索条件の組み立て、名前解決、起動時のバックオフ、ツールのハンドラ、MCP プロトコル越しの `tools/list` / `tools/call` |
-| 実 API | `test/live/*.live.test.ts` | 実際の Backlog に接続。課題・コメント・添付・マイルストーンの作成から削除までを通しで確認する |
+| 実 API | `test/live/*.live.test.ts` | 実際の Backlog に接続。課題・コメント・添付・マイルストーン・Wiki の作成から削除までを通しで確認する |
 
 実 API のテストは `.env`（または環境変数）に次の 3 つが揃っているときだけ実行され、
 揃っていなければ自動的にスキップされます。
@@ -202,7 +216,7 @@ BACKLOG_TEST_PROJECT_KEY=YOUR_TEST_PROJECT
 ```
 
 > [!IMPORTANT]
-> 実 API のテストは課題・マイルストーン・カテゴリを作成し、終了時に削除します。
+> 実 API のテストは課題・マイルストーン・カテゴリ・Wiki ページを作成し、終了時に削除します。
 > 必ずテスト専用のプロジェクトを指定してください。
 
 ### コアパッケージ（他プロジェクトから利用）
