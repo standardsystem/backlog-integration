@@ -37,12 +37,13 @@ function makeContext() {
     const api = new BacklogApiClient({ spaceId: 'my-space', apiKey: 'k', domain: 'backlog.jp' });
 
     const wikis = {
-        getWiki: async () => WIKI,
+        getWikiWithVersion: async () => ({ ...WIKI, version: 4 }),
+        getLatestVersion: async () => ({ version: 5, created: WIKI.updated, createdUser: { id: 2, name: 'b' } }),
         listWikis: async () => [{ ...WIKI, content: undefined }],
         countWikis: async () => 3,
         addWiki: async (o: Record<string, unknown>) => { captured.add = o; return { ...WIKI, name: o.name }; },
         updateWiki: async (_id: number, o: Record<string, unknown>) => { captured.update = o; return WIKI; },
-        downloadContent: async (id: number, path: string) => ({ id, name: WIKI.name, updated: WIKI.updated, path, bytes: 6 }),
+        downloadContent: async (id: number, path: string) => ({ id, name: WIKI.name, updated: WIKI.updated, version: 4, path, bytes: 6 }),
     };
 
     const ctx = { api, wikis } as unknown as ToolContext;
@@ -81,10 +82,11 @@ async function writeTempContent(content: string): Promise<string> {
 }
 
 describe('Wiki 読み取りツール', () => {
-    test('get_wiki が本文と url を返す', async () => {
+    test('get_wiki が本文・版番号・url を返す', async () => {
         const { ctx } = makeContext();
         const result = await makeServer(ctx).call('get_wiki', { wikiId: 50 });
         assert.equal(result.json.content, '本文');
+        assert.equal(result.json.version, 4);
         assert.equal(result.json.url, 'https://my-space.backlog.jp/alias/wiki/50');
     });
 
@@ -102,11 +104,11 @@ describe('Wiki 読み取りツール', () => {
         assert.deepEqual((await makeServer(ctx).call('count_wikis', { projectIdOrKey: 'PROJ' })).json, { projectIdOrKey: 'PROJ', count: 3 });
     });
 
-    test('download_wiki_content が保存先と updated を返す', async () => {
+    test('download_wiki_content が保存先と版番号を返す', async () => {
         const { ctx } = makeContext();
         const result = await makeServer(ctx).call('download_wiki_content', { wikiId: 50, outputPath: '/tmp/x.md' });
         assert.equal(result.json.path, '/tmp/x.md');
-        assert.equal(result.json.updated, '2026-09-02T00:00:00Z');
+        assert.equal(result.json.version, 4);
         assert.equal(result.json.url, 'https://my-space.backlog.jp/alias/wiki/50');
     });
 });
@@ -147,16 +149,16 @@ describe('add_wiki', () => {
 });
 
 describe('update_wiki', () => {
-    test('expectedUpdated をサービスに渡し、指定時は warnings が空', async () => {
+    test('expectedVersion をサービスに渡し、更新後の版を返す', async () => {
         const { ctx, captured } = makeContext();
-        const result = await makeServer(ctx).call('update_wiki', { wikiId: 50, content: 'y', expectedUpdated: '2026-09-02T00:00:00Z' });
-        assert.equal(captured.update?.expectedUpdated, '2026-09-02T00:00:00Z');
+        const result = await makeServer(ctx).call('update_wiki', { wikiId: 50, content: 'y', expectedVersion: 4 });
+        assert.equal(captured.update?.expectedVersion, 4);
         assert.equal(captured.update?.content, 'y');
         assert.deepEqual(result.json.warnings, []);
-        assert.equal(result.json.updated, '2026-09-02T00:00:00Z');
+        assert.equal(result.json.version, 5, '続けて更新するときに使う版を返すこと');
     });
 
-    test('本文を expectedUpdated なしで置き換えると warnings で知らせる', async () => {
+    test('本文を expectedVersion なしで置き換えると warnings で知らせる', async () => {
         const { ctx } = makeContext();
         const result = await makeServer(ctx).call('update_wiki', { wikiId: 50, content: 'y' });
         assert.equal(result.isError, false);
@@ -182,15 +184,15 @@ describe('update_wiki', () => {
         (ctx.wikis as unknown as { updateWiki: () => Promise<never> }).updateWiki = async () => {
             throw new Error('Wiki ページ（ID: 50）は読み込み後に更新されています');
         };
-        const result = await makeServer(ctx).call('update_wiki', { wikiId: 50, content: 'y', expectedUpdated: 'old' });
+        const result = await makeServer(ctx).call('update_wiki', { wikiId: 50, content: 'y', expectedVersion: 1 });
         assert.equal(result.isError, true);
         assert.match(result.text, /Wiki ページの更新に失敗しました: .*読み込み後に更新されています/);
     });
 
-    test('説明文が全文置換と expectedUpdated を案内している', () => {
+    test('説明文が全文置換と expectedVersion を案内している', () => {
         const { ctx } = makeContext();
         const description = makeServer(ctx).definition('update_wiki').description;
         assert.match(description, /全文置換/);
-        assert.match(description, /expectedUpdated/);
+        assert.match(description, /expectedVersion/);
     });
 });

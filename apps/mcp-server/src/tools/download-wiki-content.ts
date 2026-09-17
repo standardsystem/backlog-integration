@@ -14,7 +14,7 @@ export function registerDownloadWikiContentTool(server: McpServer, ctx: ToolCont
         {
             description: 'Wiki ページの本文をローカルファイルに保存します（ページ名の見出しは付けず、本文だけを書き出します）。'
                 + '長い本文を編集するときは、保存したファイルを編集して update_wiki の contentFilePath に渡し、'
-                + '返却の updated を expectedUpdated に指定してください。',
+                + '返却の version を expectedVersion に指定してください。',
             inputSchema: {
                 wikiId: z.number().describe('Wiki ページID'),
                 outputPath: z.string().describe('保存先の絶対パス（プロジェクトの記法が markdown なら .md 推奨）'),
@@ -27,6 +27,7 @@ export function registerDownloadWikiContentTool(server: McpServer, ctx: ToolCont
                     id: result.id,
                     name: result.name,
                     updated: result.updated,
+                    version: result.version,
                     path: result.path,
                     bytes: result.bytes,
                     url: ctx.api.getWikiUrl(result.id),

@@ -45,4 +45,5 @@ export type {
     UploadDocumentMarkdownOptions,
     AddWikiOptions,
     UpdateWikiOptions,
+    WikiVersion,
 } from './types.js';

@@ -287,9 +287,21 @@ export interface UpdateWikiOptions {
     /** true のときお知らせメールを送る */
     mailNotify?: boolean;
     /**
-     * 読み込み時点の `updated`。指定すると、現在の値と異なる場合は更新せずにエラーにする
+     * 読み込み時点の版番号。指定すると、最新の版と異なる場合は更新せずにエラーにする
      */
-    expectedUpdated?: string;
+    expectedVersion?: number;
+}
+
+/**
+ * Wiki ページの版
+ */
+export interface WikiVersion {
+    /** 版番号（更新のたびに 1 ずつ増える。履歴が空のページは 0） */
+    version: number;
+    /** この版の作成日時（履歴が空なら null） */
+    created: string | null;
+    /** この版を作成したユーザ（履歴が空なら null） */
+    createdUser: { id?: number; name?: string } | null;
 }
 
 /**

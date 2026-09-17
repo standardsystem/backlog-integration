@@ -43,27 +43,29 @@ describe('live: WikiService', { skip: LIVE_SKIP_REASON }, () => {
         wikiId = created.id;
         assert.equal(created.name, name);
 
-        const fetched = await wikis.getWiki(created.id);
+        const fetched = await wikis.getWikiWithVersion(created.id);
         assert.equal(fetched.content, '初版');
+        assert.equal(fetched.version, 1);
 
         const listed = await wikis.listWikis(live.projectKey, name);
         assert.ok(listed.some((w) => w.id === created.id), 'キーワードで作成したページが見つかること');
         assert.ok(await wikis.countWikis(live.projectKey) >= 1);
 
-        const updated = await wikis.updateWiki(created.id, { content: '第2版', expectedUpdated: fetched.updated });
+        const updated = await wikis.updateWiki(created.id, { content: '第2版', expectedVersion: fetched.version });
         assert.equal(updated.content, '第2版');
+        assert.equal((await wikis.getLatestVersion(created.id)).version, 2);
 
-        // 読み込み後に他者が更新した状況を、古い updated を渡して再現する
-        if (updated.updated !== fetched.updated) {
-            await assert.rejects(
-                wikis.updateWiki(created.id, { content: '第3版', expectedUpdated: fetched.updated }),
-                /読み込み後に更新されています/,
-            );
-            assert.equal((await wikis.getWiki(created.id)).content, '第2版', '上書きされていないこと');
-        }
+        // 読み込み後に他者が更新した状況を、古い版を渡して再現する。
+        // 直前の更新と同じ秒に収まり updated が変わらない場合でも検知できること
+        await assert.rejects(
+            wikis.updateWiki(created.id, { content: '第3版', expectedVersion: fetched.version }),
+            /読み込み後に更新されています/,
+        );
+        assert.equal((await wikis.getWiki(created.id)).content, '第2版', '上書きされていないこと');
 
         tempDir = await mkdtemp(join(tmpdir(), 'wiki-live-'));
         const saved = await wikis.downloadContent(created.id, join(tempDir, 'page.md'));
         assert.equal(await readFile(saved.path, 'utf8'), '第2版');
+        assert.equal(saved.version, 2);
     });
 });

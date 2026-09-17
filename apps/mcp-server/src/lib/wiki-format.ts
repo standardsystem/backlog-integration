@@ -29,7 +29,7 @@ function toUserRef(user: { id?: number; name?: string } | null | undefined) {
  * Wiki ページを本文を除いたサマリに整形する
  *
  * 一覧では本文が返らず、作成・更新の返却では本文を繰り返す必要が無いため、
- * ページの特定と次の更新（`expectedUpdated`）に必要な項目だけを返します。
+ * ページの特定に必要な項目だけを返します。
  *
  * @param wiki - Backlog API の Wiki ページ
  * @param api - URL 組み立てに使う Backlog クライアント

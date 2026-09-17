@@ -158,9 +158,11 @@ Wiki:
 - `update_wiki` - Wiki ページのページ名・本文を更新（本文は全文置換）
 - `download_wiki_content` - Wiki ページの本文をローカルファイルに保存
 
-> `update_wiki` に取得時の `updated` を `expectedUpdated` として渡すと、読み込み後に他者が
-> 編集していた場合は上書きせずにエラーになります。Backlog API には競合検知が無いため、
-> 本文を書き換えるときは指定してください（未指定で本文を更新すると `warnings` に載せます）。
+> `update_wiki` に取得時の `version`（`get_wiki` / `download_wiki_content` が返す版番号）を
+> `expectedVersion` として渡すと、読み込み後に他者が編集していた場合は上書きせずにエラーになります。
+> Backlog API には競合検知が無いため、本文を書き換えるときは指定してください（未指定で本文を更新すると
+> `warnings` に載せます）。`updated` は秒単位で同じ 1 秒の間の編集を見分けられないため、
+> 比較には Wiki 履歴の版番号を使います。確認から更新までの間に入った編集は検知できません。
 > Wiki の `url` はページ名の変更で変わらない `/alias/wiki/{id}` 形式です。
 
 ### CLIツール
