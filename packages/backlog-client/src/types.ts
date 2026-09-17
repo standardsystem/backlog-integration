@@ -263,6 +263,48 @@ export interface UploadDocumentMarkdownOptions {
 }
 
 /**
+ * Wiki ページ作成のオプション
+ */
+export interface AddWikiOptions {
+    /** プロジェクトID もしくはキー */
+    projectIdOrKey: string | number;
+    /** ページ名（`/` 区切りで階層を表す） */
+    name: string;
+    /** 本文（プロジェクトの記法: Markdown または Backlog 記法） */
+    content: string;
+    /** true のときお知らせメールを送る */
+    mailNotify?: boolean;
+}
+
+/**
+ * Wiki ページ更新のオプション
+ */
+export interface UpdateWikiOptions {
+    /** 新しいページ名 */
+    name?: string;
+    /** 新しい本文（全文置換） */
+    content?: string;
+    /** true のときお知らせメールを送る */
+    mailNotify?: boolean;
+    /**
+     * 読み込み時点の版番号。指定すると、最新の版と異なる場合は更新せずにエラーにする
+     */
+    expectedVersion?: number;
+}
+
+/**
+ * Wiki ページの版
+ */
+export interface WikiVersion {
+    /** 版番号（更新のたびに 1 ずつ増える。履歴が空のページは 0） */
+    version: number;
+    /** この版の作成日時（履歴が空なら null） */
+    created: string | null;
+    /** この版を作成したユーザ（履歴が空なら null） */
+    createdUser: { id?: number; name?: string } | null;
+}
+
+/**
  * 課題作成のオプション
  */
 export interface CreateIssueOptions {
