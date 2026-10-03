@@ -403,8 +403,9 @@ describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
         const backlog = api.getClient();
 
         // 課題種別: 2 つ追加し、片方を削除して課題がもう片方に移ることを確かめる
+        // （課題種別・状態の名前は 20 文字まで。超えると HTTP 400 error.maxLength）
         const keep = await client.call('add_issue_type', {
-            projectIdOrKey: live.projectKey, name: `zz-type-keep-${stamp}`, color: '#2779ca',
+            projectIdOrKey: live.projectKey, name: `zz-tk-${stamp}`, color: '#2779ca',
         });
         assert.equal(keep.isError, false, keep.text);
         assert.ok(keep.json.id > 0);
@@ -417,7 +418,7 @@ describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
         }));
 
         const doomed = await client.call('add_issue_type', {
-            projectIdOrKey: live.projectKey, name: `zz-type-doomed-${stamp}`, color: '#990000',
+            projectIdOrKey: live.projectKey, name: `zz-td-${stamp}`, color: '#990000',
         });
         assert.equal(doomed.isError, false, doomed.text);
         cleanup.push(() => backlog.getIssueTypes(live.projectKey).then((types) => {
@@ -435,13 +436,14 @@ describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
             projectIdOrKey: live.projectKey, name: `zz-ms-${stamp}`, releaseDueDate: '2030-12-31',
         });
         assert.equal(milestone.isError, false, milestone.text);
-        assert.equal(milestone.json.releaseDueDate, '2030-12-31');
+        // Backlog は日付を ISO 8601（2030-12-31T00:00:00Z）で返す
+        assert.equal(milestone.json.releaseDueDate.slice(0, 10), '2030-12-31');
         cleanup.push(() => backlog.deleteVersions(live.projectKey, milestone.json.id));
 
         // 受け入れ条件: 同じ MCP サーバーのプロセスで、追加した名前を create_issue が引き当てる
         const issue = await createIssue({
             summary: '[自動テスト] 追加した設定を名前で指定',
-            issueType: `zz-type-doomed-${stamp}`,
+            issueType: `zz-td-${stamp}`,
             category: [`zz-cat-${stamp}`],
             milestone: [`zz-ms-${stamp}`],
         });
@@ -454,13 +456,13 @@ describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
         // 課題種別の削除: 名前で指定し、使用中の課題が代わりの種別に移る
         const deleted = await client.call('delete_issue_type', {
             projectIdOrKey: live.projectKey,
-            issueType: `zz-type-doomed-${stamp}`,
-            substituteIssueType: `zz-type-keep-${stamp}`,
+            issueType: `zz-td-${stamp}`,
+            substituteIssueType: `zz-tk-${stamp}`,
         });
         assert.equal(deleted.isError, false, deleted.text);
         assert.equal(deleted.json.id, doomed.json.id);
         assert.equal(deleted.json.deleted, true);
-        assert.deepEqual(deleted.json.substituteIssueType, { id: keep.json.id, name: `zz-type-keep-${stamp}` });
+        assert.deepEqual(deleted.json.substituteIssueType, { id: keep.json.id, name: `zz-tk-${stamp}` });
 
         const moved = await client.call('get_issue', { issueIdOrKey: issue.issueKey });
         assert.equal(moved.json.issueType.id, keep.json.id, '使用中の課題が代わりの種別に移ること');
@@ -469,12 +471,12 @@ describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
         const stale = await client.call('create_issue', {
             projectIdOrKey: live.projectKey,
             summary: '[自動テスト] 失敗するはず',
-            issueType: `zz-type-doomed-${stamp}`,
+            issueType: `zz-td-${stamp}`,
             priority: '中',
         });
         assert.equal(stale.isError, true);
         assert.match(stale.text, /解決できませんでした/);
-        assert.doesNotMatch(stale.text, new RegExp(`zz-type-doomed-${stamp}\\(`), '古いキャッシュが残っていないこと');
+        assert.doesNotMatch(stale.text, new RegExp(`zz-td-${stamp}\\(`), '古いキャッシュが残っていないこと');
     });
 
     test('add_status で追加した状態を直後に update_issue が名前で引ける（スタンダードプラン以上）', async (t) => {

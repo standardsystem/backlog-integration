@@ -123,10 +123,11 @@ describe('live: ProjectService', { skip: LIVE_SKIP_REASON }, () => {
     });
 
     test('addIssueType / deleteIssueType で種別を入れ替えられる', async () => {
+        // 課題種別・状態の名前は 20 文字まで（超えると HTTP 400 error.maxLength）
         const stamp = Date.now();
 
-        const keep = await projects.addIssueType(live.projectKey, { name: `zz-svc-keep-${stamp}`, color: '#7ea800' });
-        const doomed = await projects.addIssueType(live.projectKey, { name: `zz-svc-doomed-${stamp}`, color: '#e30000' });
+        const keep = await projects.addIssueType(live.projectKey, { name: `zz-sk-${stamp}`, color: '#7ea800' });
+        const doomed = await projects.addIssueType(live.projectKey, { name: `zz-sd-${stamp}`, color: '#e30000' });
         cleanup.push(async () => {
             const types = await projects.listIssueTypes(live.projectKey);
             const substitute = types.find((t) => t.id !== keep.id && t.id !== doomed.id)!;
@@ -147,7 +148,7 @@ describe('live: ProjectService', { skip: LIVE_SKIP_REASON }, () => {
         const stamp = Date.now();
         let status;
         try {
-            status = await projects.addStatus(live.projectKey, { name: `zz-svc-st-${stamp}`, color: '#4caf93' });
+            status = await projects.addStatus(live.projectKey, { name: `zz-ss-${stamp}`, color: '#4caf93' });
         } catch (error) {
             t.skip(`カスタム状態を追加できないスペースのためスキップ: ${error instanceof Error ? error.message : error}`);
             return;
