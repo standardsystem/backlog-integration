@@ -121,6 +121,7 @@ describe('MCP プロトコル越しの動作', () => {
             'download_attachment', 'download_issue_attachments', 'list_issue_attachments', 'delete_issue_attachment',
             'get_project', 'list_project_users', 'list_milestones', 'list_statuses',
             'list_issue_types', 'list_categories', 'list_priorities', 'get_myself',
+            'add_milestone', 'add_category', 'add_issue_type', 'add_status', 'delete_issue_type',
             'get_document', 'list_documents', 'get_document_tree', 'add_document',
             'upload_document_markdown', 'download_document_markdown', 'download_document_attachment',
             'delete_document_attachment',
@@ -151,6 +152,58 @@ describe('MCP プロトコル越しの動作', () => {
         assert.equal(parentChild.anyOf.length, 2);
         assert.ok(parentChild.anyOf.some((s: { type?: string }) => s.type === 'integer'));
         assert.ok(parentChild.anyOf.some((s: { enum?: string[] }) => s.enum?.includes('hasChildren')));
+    });
+
+    test('add_issue_type / add_status の color は enum の JSON Schema になる', async () => {
+        const { result } = await client.request('tools/list', {});
+        const addIssueType = result.tools.find((t: { name: string }) => t.name === 'add_issue_type');
+        assert.deepEqual(addIssueType.inputSchema.required.sort(), ['color', 'name', 'projectIdOrKey']);
+        assert.equal(addIssueType.inputSchema.properties.color.enum.length, 10);
+        assert.ok(addIssueType.inputSchema.properties.color.enum.includes('#7ea800'));
+
+        const addStatus = result.tools.find((t: { name: string }) => t.name === 'add_status');
+        assert.equal(addStatus.inputSchema.properties.color.enum.length, 10);
+        assert.ok(addStatus.inputSchema.properties.color.enum.includes('#eda62a'));
+    });
+
+    test('add_issue_type は候補外の色を呼び出し前に弾く', async () => {
+        const { result } = await client.request('tools/call', {
+            name: 'add_issue_type',
+            arguments: { projectIdOrKey: 'PROJ', name: 'x', color: '#000000' },
+        });
+        assert.equal(result.isError, true);
+        const text = result.content.map((c: { text: string }) => c.text).join('');
+        assert.doesNotMatch(text, /HTTP \d{3}/, 'API を呼ばずに検証で止まること');
+    });
+
+    test('add_issue_type / add_status は 20 文字を超える name を呼び出し前に弾く', async () => {
+        const { result: list } = await client.request('tools/list', {});
+        for (const [name, color] of [['add_issue_type', '#7ea800'], ['add_status', '#eda62a']]) {
+            const tool = list.tools.find((t: { name: string }) => t.name === name);
+            assert.equal(tool.inputSchema.properties.name.maxLength, 20, `${name} の JSON Schema に maxLength があること`);
+
+            const { result } = await client.request('tools/call', {
+                name,
+                arguments: { projectIdOrKey: 'PROJ', name: 'あ'.repeat(21), color },
+            });
+            assert.equal(result.isError, true);
+            const text = result.content.map((c: { text: string }) => c.text).join('');
+            assert.doesNotMatch(text, /HTTP \d{3}/, `${name} が API を呼ばずに検証で止まること`);
+        }
+    });
+
+    test('delete_issue_type は issueType / substituteIssueType に数値と名前の両方を受け付ける', async () => {
+        const { result } = await client.request('tools/list', {});
+        const tool = result.tools.find((t: { name: string }) => t.name === 'delete_issue_type');
+        assert.deepEqual(tool.inputSchema.required.sort(), ['issueType', 'projectIdOrKey', 'substituteIssueType']);
+        for (const field of ['issueType', 'substituteIssueType']) {
+            // zod は string | number の union を type: ["string", "number"] にまとめる（anyOf になる版もある）
+            const property = tool.inputSchema.properties[field];
+            const types: string[] = Array.isArray(property.type)
+                ? property.type
+                : property.anyOf.map((s: { type?: string }) => s.type);
+            assert.deepEqual([...types].sort(), ['number', 'string'], `${field} が数値と文字列を受け付けること`);
+        }
     });
 
     test('create_issue の必須項目は summary だけ', async () => {

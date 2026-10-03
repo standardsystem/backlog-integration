@@ -91,7 +91,7 @@ class LiveClient {
  * MCP ツールを実 Backlog に対して動かすテスト
  *
  * `.env` に認証情報とテスト用プロジェクトキーがある場合だけ実行されます。
- * 作成した課題・マイルストーン・カテゴリは終了時に必ず削除します。
+ * 作成した課題・マイルストーン・カテゴリ・課題種別・状態は終了時に必ず削除します。
  */
 describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
     const live = getLiveConfig()!;
@@ -396,6 +396,114 @@ describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
         assert.equal(result.isError, false, result.text);
         assert.equal(result.json.assignee.id, (await projects.getMyself()).id);
         assert.equal(result.json.url, `https://${host}/view/${issue.issueKey}`);
+    });
+
+    test('プロジェクト設定の追加と課題種別の削除が MCP だけで完結し、直後に名前で引ける', async () => {
+        const stamp = Date.now();
+        const backlog = api.getClient();
+
+        // 課題種別: 2 つ追加し、片方を削除して課題がもう片方に移ることを確かめる
+        // （課題種別・状態の名前は 20 文字まで。超えると HTTP 400 error.maxLength）
+        const keep = await client.call('add_issue_type', {
+            projectIdOrKey: live.projectKey, name: `zz-tk-${stamp}`, color: '#2779ca',
+        });
+        assert.equal(keep.isError, false, keep.text);
+        assert.ok(keep.json.id > 0);
+        assert.equal(keep.json.color, '#2779ca');
+        assert.match(keep.json.message, /を追加しました/);
+        cleanup.push(() => backlog.getIssueTypes(live.projectKey).then((types) => {
+            if (!types.some((t) => t.id === keep.json.id)) return;
+            const substitute = types.find((t) => t.id !== keep.json.id)!;
+            return backlog.deleteIssueType(live.projectKey, keep.json.id, { substituteIssueTypeId: substitute.id });
+        }));
+
+        const doomed = await client.call('add_issue_type', {
+            projectIdOrKey: live.projectKey, name: `zz-td-${stamp}`, color: '#990000',
+        });
+        assert.equal(doomed.isError, false, doomed.text);
+        cleanup.push(() => backlog.getIssueTypes(live.projectKey).then((types) => {
+            if (!types.some((t) => t.id === doomed.json.id)) return;
+            return backlog.deleteIssueType(live.projectKey, doomed.json.id, { substituteIssueTypeId: keep.json.id });
+        }));
+
+        // カテゴリ・マイルストーン
+        const category = await client.call('add_category', { projectIdOrKey: live.projectKey, name: `zz-cat-${stamp}` });
+        assert.equal(category.isError, false, category.text);
+        assert.ok(category.json.id > 0);
+        cleanup.push(() => backlog.deleteCategories(live.projectKey, category.json.id));
+
+        const milestone = await client.call('add_milestone', {
+            projectIdOrKey: live.projectKey, name: `zz-ms-${stamp}`, releaseDueDate: '2030-12-31',
+        });
+        assert.equal(milestone.isError, false, milestone.text);
+        // Backlog は日付を ISO 8601（2030-12-31T00:00:00Z）で返す
+        assert.equal(milestone.json.releaseDueDate.slice(0, 10), '2030-12-31');
+        cleanup.push(() => backlog.deleteVersions(live.projectKey, milestone.json.id));
+
+        // 受け入れ条件: 同じ MCP サーバーのプロセスで、追加した名前を create_issue が引き当てる
+        const issue = await createIssue({
+            summary: '[自動テスト] 追加した設定を名前で指定',
+            issueType: `zz-td-${stamp}`,
+            category: [`zz-cat-${stamp}`],
+            milestone: [`zz-ms-${stamp}`],
+        });
+        assert.deepEqual(issue.milestone.map((m: { id: number }) => m.id), [milestone.json.id]);
+        // create_issue の返却サマリには課題種別・カテゴリが無いため、生レスポンスで確かめる
+        const created = await client.call('get_issue', { issueIdOrKey: issue.issueKey });
+        assert.equal(created.json.issueType.id, doomed.json.id, '追加直後の課題種別を名前で引けること');
+        assert.deepEqual(created.json.category.map((c: { id: number }) => c.id), [category.json.id]);
+
+        // 課題種別の削除: 名前で指定し、使用中の課題が代わりの種別に移る
+        const deleted = await client.call('delete_issue_type', {
+            projectIdOrKey: live.projectKey,
+            issueType: `zz-td-${stamp}`,
+            substituteIssueType: `zz-tk-${stamp}`,
+        });
+        assert.equal(deleted.isError, false, deleted.text);
+        assert.equal(deleted.json.id, doomed.json.id);
+        assert.equal(deleted.json.deleted, true);
+        assert.deepEqual(deleted.json.substituteIssueType, { id: keep.json.id, name: `zz-tk-${stamp}` });
+
+        const moved = await client.call('get_issue', { issueIdOrKey: issue.issueKey });
+        assert.equal(moved.json.issueType.id, keep.json.id, '使用中の課題が代わりの種別に移ること');
+
+        // 削除した種別は名前で引けなくなり、候補一覧にも載らない
+        const stale = await client.call('create_issue', {
+            projectIdOrKey: live.projectKey,
+            summary: '[自動テスト] 失敗するはず',
+            issueType: `zz-td-${stamp}`,
+            priority: '中',
+        });
+        assert.equal(stale.isError, true);
+        assert.match(stale.text, /解決できませんでした/);
+        assert.doesNotMatch(stale.text, new RegExp(`zz-td-${stamp}\\(`), '古いキャッシュが残っていないこと');
+    });
+
+    test('add_status で追加した状態を直後に update_issue が名前で引ける（スタンダードプラン以上）', async (t) => {
+        const stamp = Date.now();
+        const backlog = api.getClient();
+
+        const status = await client.call('add_status', {
+            projectIdOrKey: live.projectKey, name: `zz-st-${stamp}`, color: '#eda62a',
+        });
+        if (status.isError) {
+            // スキップするのはプラン制限（Backlog のエラーコード 2: LicenceError）だけ。
+            // 引数の不備や 5xx まで飲み込むと、追加の不具合を検出できなくなる
+            assert.match(status.text, /\(code: 2\)/, `プラン制限以外の理由で add_status が失敗: ${status.text}`);
+            t.skip(`カスタム状態を追加できないプランのためスキップ: ${status.text}`);
+            return;
+        }
+        assert.ok(status.json.id > 0);
+        assert.equal(status.json.color, '#eda62a');
+        cleanup.push(() => backlog.deleteProjectStatus(live.projectKey, status.json.id, 1));
+
+        const issue = await createIssue({ summary: '[自動テスト] 追加した状態に変更' });
+        const updated = await client.call('update_issue', { issueIdOrKey: issue.issueKey, status: `zz-st-${stamp}` });
+        assert.equal(updated.isError, false, updated.text);
+        assert.equal(updated.json.status.id, status.json.id, '追加直後の状態を名前で引けること');
+
+        // 後片付けで状態を消す前に、課題を既定の状態へ戻しておく
+        await backlog.patchIssue(issue.issueKey, { statusId: 1 });
     });
 
     test('存在しない課題を指定すると HTTP ステータス付きのエラーになる', async () => {

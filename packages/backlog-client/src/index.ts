@@ -26,6 +26,12 @@ export { WikiService } from './wikis.js';
 export { sanitizeFileName, splitFileName, openUniqueFile } from './file-name.js';
 export { resolveBacklogConfig, parseSpaceId } from './config.js';
 export { describeBacklogError, formatBacklogError } from './errors.js';
+export {
+    ISSUE_TYPE_COLORS,
+    PROJECT_STATUS_COLORS,
+    ISSUE_TYPE_NAME_MAX_LENGTH,
+    PROJECT_STATUS_NAME_MAX_LENGTH,
+} from './types.js';
 export type { BacklogErrorDetail, BacklogErrorMessage } from './errors.js';
 export type {
     BacklogClientConfig,
@@ -46,4 +52,9 @@ export type {
     AddWikiOptions,
     UpdateWikiOptions,
     WikiVersion,
+    IssueTypeColor,
+    ProjectStatusColor,
+    AddMilestoneOptions,
+    AddIssueTypeOptions,
+    AddStatusOptions,
 } from './types.js';

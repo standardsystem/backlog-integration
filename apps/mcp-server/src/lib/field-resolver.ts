@@ -98,7 +98,10 @@ function expandPriorityAliases(normalized: string): string[] {
  * 課題の項目（課題種別・優先度・マイルストーンなど）を名前から ID に解決する
  *
  * 解決に使うメタ情報はプロジェクト単位でプロセス内にキャッシュします。
- * マイルストーンの追加などの変更は MCP サーバーの再起動で反映されます。
+ * マイルストーン・カテゴリ・課題種別・状態を追加・削除するツールは成功後に `clear()` を呼び、
+ * 同じプロセス内の次の名前解決が新しい設定を見るようにします。
+ * MCP の外（Backlog の画面など）で加えた変更は `clear()` が呼ばれないため、
+ * MCP サーバーの再起動で反映されます。
  */
 export class IssueFieldResolver {
     private readonly projects: ProjectService;
@@ -107,6 +110,18 @@ export class IssueFieldResolver {
 
     constructor(projects: ProjectService) {
         this.projects = projects;
+    }
+
+    /**
+     * キャッシュしたメタ情報をすべて捨てる
+     *
+     * プロジェクト設定（マイルストーン・カテゴリ・課題種別・状態）を追加・削除した直後に呼びます。
+     * プロジェクト単位ではなく全件を捨てるのは、同じプロジェクトをキーで指定した呼び出しと
+     * 数値IDで指定した呼び出しが別のキャッシュ項目になり、片方だけ残ると古い一覧で
+     * 解決してしまうためです（取り直しは一覧 API を数回呼ぶだけで済みます）。
+     */
+    clear(): void {
+        this.cache.clear();
     }
 
     /**

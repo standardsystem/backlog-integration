@@ -81,6 +81,35 @@ describe('課題種別の解決', () => {
     });
 });
 
+describe('キャッシュの破棄', () => {
+    test('clear() を呼ぶと次の解決で一覧を取り直す', async () => {
+        const { resolver, calls } = makeResolver();
+        await resolver.resolveIssueType('PROJ', 'タスク');
+        await resolver.resolveIssueType('PROJ', 'バグ');
+        assert.deepEqual(calls, ['issueTypes:PROJ'], 'キャッシュが効いていること');
+
+        resolver.clear();
+
+        await resolver.resolveIssueType('PROJ', 'タスク');
+        assert.deepEqual(calls, ['issueTypes:PROJ', 'issueTypes:PROJ'], '取り直すこと');
+    });
+
+    test('clear() はすべての種別・プロジェクトのキャッシュを捨てる', async () => {
+        const { resolver, calls } = makeResolver();
+        await resolver.resolveIssueType('PROJ', 'タスク');
+        await resolver.resolveCategories('OTHER', ['バッチ']);
+        await resolver.resolvePriority('高');
+        calls.length = 0;
+
+        resolver.clear();
+
+        await resolver.resolveIssueType('PROJ', 'タスク');
+        await resolver.resolveCategories('OTHER', ['バッチ']);
+        await resolver.resolvePriority('高');
+        assert.deepEqual(calls, ['issueTypes:PROJ', 'categories:OTHER', 'priorities']);
+    });
+});
+
 describe('優先度の解決', () => {
     test('日本語名で引ける', async () => {
         const { resolver } = makeResolver();

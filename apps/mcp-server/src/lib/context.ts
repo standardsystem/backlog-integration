@@ -20,7 +20,7 @@ export interface ToolContext {
     issues: IssueService;
     /** ドキュメント操作サービス */
     documents: DocumentService;
-    /** プロジェクトのメタ情報参照サービス */
+    /** プロジェクトのメタ情報の参照と、プロジェクト設定の追加・削除サービス */
     projects: ProjectService;
     /** Wiki 操作サービス */
     wikis: WikiService;
