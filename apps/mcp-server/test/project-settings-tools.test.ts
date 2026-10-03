@@ -1,6 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { BacklogApiClient, ISSUE_TYPE_COLORS, PROJECT_STATUS_COLORS } from '@backlog-integration/backlog-client';
+import {
+    BacklogApiClient, ISSUE_TYPE_COLORS, PROJECT_STATUS_COLORS,
+    ISSUE_TYPE_NAME_MAX_LENGTH, PROJECT_STATUS_NAME_MAX_LENGTH,
+} from '@backlog-integration/backlog-client';
 
 import type { ToolContext } from '../src/lib/context.js';
 import { IssueFieldResolver } from '../src/lib/field-resolver.js';
@@ -190,6 +193,17 @@ describe('add_issue_type', () => {
         assert.equal(schema.safeParse('赤').success, false);
     });
 
+    test('name のスキーマが 20 文字までを受け付ける', () => {
+        const { ctx } = makeContext();
+        const definition = makeServer(ctx).definition('add_issue_type');
+        const schema = definition.inputSchema!.name as { safeParse: (v: unknown) => { success: boolean } };
+        assert.equal(ISSUE_TYPE_NAME_MAX_LENGTH, 20);
+        assert.equal(schema.safeParse('あ'.repeat(20)).success, true, '20 文字は受け付けること');
+        assert.equal(schema.safeParse('あ'.repeat(21)).success, false, '21 文字は弾くこと');
+        assert.equal(schema.safeParse('').success, false);
+        assert.match(definition.description, /20 文字まで/);
+    });
+
     test('説明文に色の候補が載っている', () => {
         const { ctx } = makeContext();
         const description = makeServer(ctx).definition('add_issue_type').description;
@@ -227,6 +241,17 @@ describe('add_status', () => {
         // 課題種別の色は状態には使えない
         assert.equal(schema.safeParse('#e30000').success, false, '課題種別のパレットの色は弾くこと');
         assert.equal(schema.safeParse('#000000').success, false);
+    });
+
+    test('name のスキーマが 20 文字までを受け付ける', () => {
+        const { ctx } = makeContext();
+        const definition = makeServer(ctx).definition('add_status');
+        const schema = definition.inputSchema!.name as { safeParse: (v: unknown) => { success: boolean } };
+        assert.equal(PROJECT_STATUS_NAME_MAX_LENGTH, 20);
+        assert.equal(schema.safeParse('あ'.repeat(20)).success, true, '20 文字は受け付けること');
+        assert.equal(schema.safeParse('あ'.repeat(21)).success, false, '21 文字は弾くこと');
+        assert.equal(schema.safeParse('').success, false);
+        assert.match(definition.description, /20 文字まで/);
     });
 
     test('説明文がプラン制限と色の候補を案内している', () => {

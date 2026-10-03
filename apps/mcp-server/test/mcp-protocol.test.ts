@@ -176,6 +176,22 @@ describe('MCP プロトコル越しの動作', () => {
         assert.doesNotMatch(text, /HTTP \d{3}/, 'API を呼ばずに検証で止まること');
     });
 
+    test('add_issue_type / add_status は 20 文字を超える name を呼び出し前に弾く', async () => {
+        const { result: list } = await client.request('tools/list', {});
+        for (const [name, color] of [['add_issue_type', '#7ea800'], ['add_status', '#eda62a']]) {
+            const tool = list.tools.find((t: { name: string }) => t.name === name);
+            assert.equal(tool.inputSchema.properties.name.maxLength, 20, `${name} の JSON Schema に maxLength があること`);
+
+            const { result } = await client.request('tools/call', {
+                name,
+                arguments: { projectIdOrKey: 'PROJ', name: 'あ'.repeat(21), color },
+            });
+            assert.equal(result.isError, true);
+            const text = result.content.map((c: { text: string }) => c.text).join('');
+            assert.doesNotMatch(text, /HTTP \d{3}/, `${name} が API を呼ばずに検証で止まること`);
+        }
+    });
+
     test('delete_issue_type は issueType / substituteIssueType に数値と名前の両方を受け付ける', async () => {
         const { result } = await client.request('tools/list', {});
         const tool = result.tools.find((t: { name: string }) => t.name === 'delete_issue_type');

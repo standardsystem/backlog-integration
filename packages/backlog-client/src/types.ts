@@ -377,6 +377,20 @@ export const PROJECT_STATUS_COLORS = [
 ] as const;
 
 /**
+ * 課題種別名の最大文字数
+ *
+ * 超えると Backlog は HTTP 400（`error.maxLength : name`）を返します。
+ */
+export const ISSUE_TYPE_NAME_MAX_LENGTH = 20;
+
+/**
+ * 状態（ステータス）名の最大文字数
+ *
+ * 超えると Backlog は HTTP 400（`error.maxLength : name`）を返します。
+ */
+export const PROJECT_STATUS_NAME_MAX_LENGTH = 20;
+
+/**
  * マイルストーン（バージョン）追加のオプション
  */
 export interface AddMilestoneOptions {

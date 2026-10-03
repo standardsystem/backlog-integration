@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { PROJECT_STATUS_COLORS } from '@backlog-integration/backlog-client';
+import { PROJECT_STATUS_COLORS, PROJECT_STATUS_NAME_MAX_LENGTH } from '@backlog-integration/backlog-client';
 import type { ToolContext } from '../lib/context.js';
 import { jsonResult, errorResult } from '../lib/tool-result.js';
 import { toStatusSummary } from '../lib/project-format.js';
@@ -18,12 +18,14 @@ export function registerAddStatusTool(server: McpServer, ctx: ToolContext) {
             description: 'プロジェクトに状態（カスタムステータス）を追加します。'
                 + '管理者またはプロジェクト管理者の権限が必要です（権限が無い場合は HTTP 403）。'
                 + 'カスタムステータスはスタンダードプラン以上でのみ使えます。'
+                + `name は ${PROJECT_STATUS_NAME_MAX_LENGTH} 文字までです。`
                 + `color は次の 10 色からのみ選べます: ${PROJECT_STATUS_COLOR_GUIDE}。`
                 + '追加した名前は同じ MCP サーバーのまま update_issue / add_comment の status に指定できます。'
                 + '返却には作成した状態の id と name が含まれます。',
             inputSchema: {
                 projectIdOrKey: z.string().describe('プロジェクトIDまたはキー（例: PROJECT）'),
-                name: z.string().min(1).describe('状態名（例: 待ち）'),
+                name: z.string().min(1).max(PROJECT_STATUS_NAME_MAX_LENGTH)
+                    .describe(`状態名（${PROJECT_STATUS_NAME_MAX_LENGTH} 文字まで。例: 待ち）`),
                 color: z.enum(PROJECT_STATUS_COLORS).describe('色コード（候補外の値は受け付けません）'),
             },
         },
