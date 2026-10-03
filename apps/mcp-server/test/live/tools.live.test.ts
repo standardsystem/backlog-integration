@@ -487,9 +487,10 @@ describe('live: MCP ツール', { skip: LIVE_SKIP_REASON }, () => {
             projectIdOrKey: live.projectKey, name: `zz-st-${stamp}`, color: '#eda62a',
         });
         if (status.isError) {
-            // フリープランではカスタム状態を追加できない。権限・プランの制約は Backlog 側のメッセージで判断できる
-            assert.match(status.text, /HTTP \d{3}/, status.text);
-            t.skip(`カスタム状態を追加できないスペースのためスキップ: ${status.text}`);
+            // スキップするのはプラン制限（Backlog のエラーコード 2: LicenceError）だけ。
+            // 引数の不備や 5xx まで飲み込むと、追加の不具合を検出できなくなる
+            assert.match(status.text, /\(code: 2\)/, `プラン制限以外の理由で add_status が失敗: ${status.text}`);
+            t.skip(`カスタム状態を追加できないプランのためスキップ: ${status.text}`);
             return;
         }
         assert.ok(status.json.id > 0);

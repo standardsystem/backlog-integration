@@ -4,7 +4,11 @@ import assert from 'node:assert/strict';
 import { BacklogApiClient } from '../../src/client.js';
 import { ProjectService } from '../../src/projects.js';
 import { resolveBacklogConfig } from '../../src/config.js';
+import { describeBacklogError, formatBacklogError } from '../../src/errors.js';
 import { getLiveConfig, LIVE_SKIP_REASON } from '../helpers/env.js';
+
+/** プランで使えない機能を呼んだときに Backlog が返すエラーコード（LicenceError） */
+const LICENCE_ERROR_CODE = 2;
 
 /**
  * 実 API に接続するメタ情報のテスト
@@ -126,14 +130,19 @@ describe('live: ProjectService', { skip: LIVE_SKIP_REASON }, () => {
         // 課題種別・状態の名前は 20 文字まで（超えると HTTP 400 error.maxLength）
         const stamp = Date.now();
 
-        const keep = await projects.addIssueType(live.projectKey, { name: `zz-sk-${stamp}`, color: '#7ea800' });
-        const doomed = await projects.addIssueType(live.projectKey, { name: `zz-sd-${stamp}`, color: '#e30000' });
-        cleanup.push(async () => {
+        // 残っていれば、別の種別を代わりにして消す
+        const removeIfPresent = async (issueTypeId: number) => {
             const types = await projects.listIssueTypes(live.projectKey);
-            const substitute = types.find((t) => t.id !== keep.id && t.id !== doomed.id)!;
-            if (types.some((t) => t.id === doomed.id)) await projects.deleteIssueType(live.projectKey, doomed.id, substitute.id);
-            if (types.some((t) => t.id === keep.id)) await projects.deleteIssueType(live.projectKey, keep.id, substitute.id);
-        });
+            if (!types.some((t) => t.id === issueTypeId)) return;
+            const substitute = types.find((t) => t.id !== issueTypeId)!;
+            await projects.deleteIssueType(live.projectKey, issueTypeId, substitute.id);
+        };
+
+        // 2 つ目の作成が失敗しても 1 つ目が残らないよう、作成のたびに後片付けを登録する
+        const keep = await projects.addIssueType(live.projectKey, { name: `zz-sk-${stamp}`, color: '#7ea800' });
+        cleanup.push(() => removeIfPresent(keep.id));
+        const doomed = await projects.addIssueType(live.projectKey, { name: `zz-sd-${stamp}`, color: '#e30000' });
+        cleanup.push(() => removeIfPresent(doomed.id));
         assert.equal(keep.color, '#7ea800');
         assert.equal(doomed.color, '#e30000');
 
@@ -150,7 +159,10 @@ describe('live: ProjectService', { skip: LIVE_SKIP_REASON }, () => {
         try {
             status = await projects.addStatus(live.projectKey, { name: `zz-ss-${stamp}`, color: '#4caf93' });
         } catch (error) {
-            t.skip(`カスタム状態を追加できないスペースのためスキップ: ${error instanceof Error ? error.message : error}`);
+            // スキップするのはプラン制限（Backlog のエラーコード 2: LicenceError）だけ。
+            // 引数の不備や 5xx まで飲み込むと、追加の不具合を検出できなくなる
+            if (!describeBacklogError(error).errors.some((e) => e.code === LICENCE_ERROR_CODE)) throw error;
+            t.skip(`カスタム状態を追加できないプランのためスキップ: ${formatBacklogError(error)}`);
             return;
         }
         cleanup.push(() => projects.deleteStatus(live.projectKey, status.id, 1).catch(() => undefined));
