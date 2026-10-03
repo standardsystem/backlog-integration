@@ -64,6 +64,11 @@ import { registerListIssueTypesTool } from './tools/list-issue-types.js';
 import { registerListCategoriesTool } from './tools/list-categories.js';
 import { registerListPrioritiesTool } from './tools/list-priorities.js';
 import { registerGetMyselfTool } from './tools/get-myself.js';
+import { registerAddMilestoneTool } from './tools/add-milestone.js';
+import { registerAddCategoryTool } from './tools/add-category.js';
+import { registerAddIssueTypeTool } from './tools/add-issue-type.js';
+import { registerAddStatusTool } from './tools/add-status.js';
+import { registerDeleteIssueTypeTool } from './tools/delete-issue-type.js';
 import { registerGetWikiTool } from './tools/get-wiki.js';
 import { registerListWikisTool } from './tools/list-wikis.js';
 import { registerCountWikisTool } from './tools/count-wikis.js';
@@ -162,7 +167,7 @@ async function main() {
     registerUploadAttachmentTool(server, ctx);
     registerDeleteIssueAttachmentTool(server, ctx);
 
-    // ツールの登録（プロジェクトのメタ情報・自分自身）
+    // ツールの登録（プロジェクトのメタ情報の参照・自分自身）
     registerGetProjectTool(server, ctx);
     registerListProjectUsersTool(server, ctx);
     registerListMilestonesTool(server, ctx);
@@ -171,6 +176,13 @@ async function main() {
     registerListCategoriesTool(server, ctx);
     registerListPrioritiesTool(server, ctx);
     registerGetMyselfTool(server, ctx);
+
+    // ツールの登録（プロジェクト設定の追加・削除）
+    registerAddMilestoneTool(server, ctx);
+    registerAddCategoryTool(server, ctx);
+    registerAddIssueTypeTool(server, ctx);
+    registerAddStatusTool(server, ctx);
+    registerDeleteIssueTypeTool(server, ctx);
 
     // ツールの登録（ドキュメント）
     registerGetDocumentTool(server, ctx);

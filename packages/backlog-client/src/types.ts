@@ -341,3 +341,71 @@ export interface CreateIssueOptions {
     /** 添付ファイルIDの配列 */
     attachmentId?: number[];
 }
+
+/**
+ * 課題種別の色
+ *
+ * Backlog が課題種別に許す 10 色（backlog-js の `IssueTypeColor` と同じ）。
+ */
+export type IssueTypeColor = (typeof ISSUE_TYPE_COLORS)[number];
+
+/**
+ * 課題種別に指定できる色の一覧（Backlog API「課題種別の追加」の color）
+ *
+ * @see https://developer.nulab.com/docs/backlog/api/2/add-issue-type/
+ */
+export const ISSUE_TYPE_COLORS = [
+    '#e30000', '#990000', '#934981', '#814fbc', '#2779ca',
+    '#007e9a', '#7ea800', '#ff9200', '#ff3265', '#666665',
+] as const;
+
+/**
+ * 状態（ステータス）の色
+ *
+ * Backlog がカスタム状態に許す 10 色（backlog-js の `ProjectStatusColor` と同じ）。
+ */
+export type ProjectStatusColor = (typeof PROJECT_STATUS_COLORS)[number];
+
+/**
+ * 状態（ステータス）に指定できる色の一覧（Backlog API「状態の追加」の color）
+ *
+ * @see https://developer.nulab.com/docs/backlog/api/2/add-status/
+ */
+export const PROJECT_STATUS_COLORS = [
+    '#ea2c00', '#e87758', '#e07b9a', '#868cb7', '#3b9dbd',
+    '#4caf93', '#b0be3c', '#eda62a', '#f42858', '#393939',
+] as const;
+
+/**
+ * マイルストーン（バージョン）追加のオプション
+ */
+export interface AddMilestoneOptions {
+    /** マイルストーン名 */
+    name: string;
+    /** 説明 */
+    description?: string;
+    /** 開始日（YYYY-MM-DD形式） */
+    startDate?: string;
+    /** 期限日（YYYY-MM-DD形式） */
+    releaseDueDate?: string;
+}
+
+/**
+ * 課題種別追加のオプション
+ */
+export interface AddIssueTypeOptions {
+    /** 課題種別名 */
+    name: string;
+    /** 色（`ISSUE_TYPE_COLORS` のいずれか） */
+    color: IssueTypeColor;
+}
+
+/**
+ * 状態（ステータス）追加のオプション
+ */
+export interface AddStatusOptions {
+    /** 状態名 */
+    name: string;
+    /** 色（`PROJECT_STATUS_COLORS` のいずれか） */
+    color: ProjectStatusColor;
+}
